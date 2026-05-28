@@ -1,0 +1,525 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+// -----------------------------------------------------
+// ENUMS
+// -----------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  BIOMEDICO
+  TECNICO
+}
+
+enum PacienteOrigem {
+  LOCAL
+  ESUS
+}
+
+enum Sexo {
+  MASCULINO
+  FEMININO
+  OUTRO
+}
+
+enum TipoUnidade {
+  UBS
+  UPA
+  HOSPITAL
+  POSTO_SAUDE
+  LABORATORIO
+}
+
+enum CategoriaExame {
+  HEMATOLOGIA
+  BIOQUIMICA
+  URINANALISE
+  MICROBIOLOGIA
+  IMUNOLOGIA
+  HORMONIOS
+  SOROLOGIAS
+  OUTROS
+}
+
+enum StatusOS {
+  ABERTA
+  EM_COLETA
+  EM_ANALISE
+  CONCLUIDA
+  CANCELADA
+}
+
+enum StatusItem {
+  AGUARDANDO_COLETA
+  COLETADO
+  EM_ANALISE
+  RESULTADO_DIGITADO
+  VALIDADO
+  LIBERADO
+}
+
+enum StatusResult {
+  RASCUNHO
+  DIGITADO
+  VALIDADO
+  ASSINADO
+}
+
+enum StatusLaudo {
+  GERANDO
+  GERADO
+  LIBERADO
+  EXPIRADO
+}
+
+enum Prioridade {
+  NORMAL
+  URGENTE
+  CRITICO
+}
+
+enum Canal {
+  WHATSAPP
+  EMAIL
+  SMS
+}
+
+enum StatusNotif {
+  PENDENTE
+  ENVIADO
+  ERRO
+}
+
+// -----------------------------------------------------
+// TENANT PRINCIPAL
+// -----------------------------------------------------
+
+model Laboratorio {
+  id                 String   @id @default(cuid())
+  nome               String
+  cnes               String   @unique
+  municipio          String
+  uf                 String   @db.Char(2)
+  cnpj               String?
+  responsavelTecnico String?
+  crbm               String?
+  logoUrl            String?
+  ativo              Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  esusConexao    EsusConexao?
+  users          User[]
+  unidades       UnidadeSaude[]
+  pacientes      Paciente[]
+  examesCatalogo ExameCatalogo[]
+  ordens         OrdemServico[]
+  esusSnapshots  PacienteEsusSnapshot[]
+  esusAccessLogs EsusAccessLog[]
+
+  @@map("laboratorios")
+}
+
+// -----------------------------------------------------
+// USUARIOS
+// -----------------------------------------------------
+
+model User {
+  id               String    @id @default(cuid())
+  name             String
+  email            String
+  passwordHash     String
+  role             UserRole
+  active           Boolean   @default(true)
+
+  twoFactorSecretEncrypted String?
+  twoFactorEnabled         Boolean @default(false)
+
+  lastLoginAt   DateTime?
+  laboratorioId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  laboratorio        Laboratorio @relation(fields: [laboratorioId], references: [id])
+  ordensAbertas      OrdemServico[] @relation("solicitante")
+  resultados         ResultadoExame[]
+  auditLogs          AuditLog[]
+  refreshTokens      RefreshToken[]
+  esusConexoesCriadas EsusConexao[] @relation("esusConexaoCriador")
+  esusSnapshotsBusca PacienteEsusSnapshot[] @relation("esusSnapshotBuscador")
+  esusAccessLogs     EsusAccessLog[]
+
+  @@unique([laboratorioId, email])
+  @@index([laboratorioId])
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// -----------------------------------------------------
+// CONEXAO E-SUS
+// -----------------------------------------------------
+
+model EsusConexao {
+  id            String @id @default(cuid())
+  laboratorioId String @unique
+
+  hostEncrypted    String
+  usuarioEncrypted String
+  senhaEncrypted   String
+
+  porta Int    @default(5432)
+  banco String @default("esus")
+
+  ativa         Boolean   @default(true)
+  ultimoTesteEm DateTime?
+  statusConexao String?
+  erroConexao   String?
+
+  criadoPorId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  laboratorio Laboratorio @relation(fields: [laboratorioId], references: [id])
+  criadoPor   User        @relation("esusConexaoCriador", fields: [criadoPorId], references: [id])
+
+  @@index([criadoPorId])
+  @@map("esus_conexoes")
+}
+
+// -----------------------------------------------------
+// PACIENTES
+// -----------------------------------------------------
+
+model Paciente {
+  id             String @id @default(cuid())
+  laboratorioId  String
+  unidadeId      String
+
+  nome String
+
+  // cpfHash deve ser deterministico para busca.
+  // Recomendado: HMAC-SHA256(cpfNormalizado, chaveSecreta).
+  cpfHash      String
+  cpfEncrypted String
+
+  cns            String?
+  dataNascimento DateTime
+  sexo           Sexo
+
+  nomeMaeEncrypted String?
+  telefoneEncrypted String?
+  whatsappEncrypted String?
+  emailEncrypted    String?
+  enderecoEncrypted Json?
+  fotoUrl           String?
+
+  origem         PacienteOrigem @default(LOCAL)
+  esusSnapshotId String? @unique
+
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  laboratorio  Laboratorio @relation(fields: [laboratorioId], references: [id])
+  unidade      UnidadeSaude @relation(fields: [unidadeId], references: [id])
+  esusSnapshot PacienteEsusSnapshot? @relation(fields: [esusSnapshotId], references: [id])
+  ordens       OrdemServico[]
+
+  @@unique([laboratorioId, cpfHash])
+  @@unique([laboratorioId, cns])
+  @@index([laboratorioId])
+  @@index([unidadeId])
+  @@map("pacientes")
+}
+
+model PacienteEsusSnapshot {
+  id            String @id @default(cuid())
+  laboratorioId String
+
+  cpfHash     String
+  dadosBrutos Json
+
+  hashIntegridade String
+
+  buscadoPorId String
+  ipBusca      String
+  createdAt    DateTime @default(now())
+
+  laboratorio Laboratorio @relation(fields: [laboratorioId], references: [id])
+  buscadoPor  User        @relation("esusSnapshotBuscador", fields: [buscadoPorId], references: [id])
+  paciente    Paciente?
+
+  @@index([laboratorioId, cpfHash])
+  @@index([buscadoPorId])
+  @@map("pacientes_esus_snapshot")
+}
+
+model EsusAccessLog {
+  id            String @id @default(cuid())
+  laboratorioId String
+  userId        String
+
+  cpfHashConsultado String
+  encontrado        Boolean
+  duracaoMs         Int
+  ip                String
+  userAgent         String?
+  erro              String?
+
+  createdAt DateTime @default(now())
+
+  laboratorio Laboratorio @relation(fields: [laboratorioId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@index([laboratorioId, createdAt])
+  @@index([userId])
+  @@index([laboratorioId, cpfHashConsultado])
+  @@map("esus_access_logs")
+}
+
+// -----------------------------------------------------
+// UNIDADES
+// -----------------------------------------------------
+
+model UnidadeSaude {
+  id            String      @id @default(cuid())
+  laboratorioId String
+  nome          String
+  cnes          String?
+  endereco      String?
+  tipo          TipoUnidade
+  ativa         Boolean     @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  laboratorio Laboratorio @relation(fields: [laboratorioId], references: [id])
+  pacientes   Paciente[]
+  ordens      OrdemServico[]
+
+  @@unique([laboratorioId, cnes])
+  @@index([laboratorioId])
+  @@map("unidades_saude")
+}
+
+// -----------------------------------------------------
+// CATALOGO DE EXAMES
+// -----------------------------------------------------
+
+model ExameCatalogo {
+  id            String @id @default(cuid())
+  laboratorioId String
+
+  codigo     String
+  nome       String
+  sigtap     String?
+  metodo     String?
+  material   String
+  categoria  CategoriaExame
+  prazoHoras Int @default(24)
+  instrucoes String?
+  ativo      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  laboratorio Laboratorio @relation(fields: [laboratorioId], references: [id])
+  valoresRef  ValorReferencia[]
+  itensOrdem  ItemOrdem[]
+
+  @@unique([laboratorioId, codigo])
+  @@index([laboratorioId])
+  @@map("exames_catalogo")
+}
+
+model ValorReferencia {
+  id         String @id @default(cuid())
+  exameId    String
+  campo      String
+  faixaIdade String?
+  sexo       Sexo?
+  minimo     Float?
+  maximo     Float?
+  textoRef   String?
+  unidade    String
+  critico    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exame ExameCatalogo @relation(fields: [exameId], references: [id])
+
+  @@index([exameId])
+  @@map("valores_referencia")
+}
+
+// -----------------------------------------------------
+// ORDEM DE SERVICO
+// -----------------------------------------------------
+
+model OrdemServico {
+  id            String @id @default(cuid())
+  laboratorioId String
+  protocolo     String
+
+  pacienteId    String
+  unidadeId     String
+  solicitanteId String
+
+  medicoSolicitante String?
+  status            StatusOS   @default(ABERTA)
+  prioridade        Prioridade @default(NORMAL)
+  observacoes       String?
+  dataColeta        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  laboratorio Laboratorio  @relation(fields: [laboratorioId], references: [id])
+  paciente    Paciente     @relation(fields: [pacienteId], references: [id])
+  unidade     UnidadeSaude @relation(fields: [unidadeId], references: [id])
+  solicitante User         @relation("solicitante", fields: [solicitanteId], references: [id])
+  itens       ItemOrdem[]
+  laudo       Laudo?
+
+  @@unique([laboratorioId, protocolo])
+  @@index([laboratorioId, status])
+  @@index([pacienteId])
+  @@index([unidadeId])
+  @@index([solicitanteId])
+  @@index([createdAt])
+  @@map("ordens_servico")
+}
+
+model ItemOrdem {
+  id           String     @id @default(cuid())
+  ordemId      String
+  exameId      String
+  status       StatusItem @default(AGUARDANDO_COLETA)
+  coletadoEm   DateTime?
+  prazoEntrega DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ordem     OrdemServico  @relation(fields: [ordemId], references: [id])
+  exame     ExameCatalogo @relation(fields: [exameId], references: [id])
+  resultado ResultadoExame?
+
+  @@unique([ordemId, exameId])
+  @@index([ordemId])
+  @@index([exameId])
+  @@map("itens_ordem")
+}
+
+// -----------------------------------------------------
+// RESULTADOS E LAUDOS
+// -----------------------------------------------------
+
+model ResultadoExame {
+  id          String @id @default(cuid())
+  itemOrdemId String @unique
+  biomedicoId String
+
+  valores        Json
+  status         StatusResult @default(RASCUNHO)
+  critico        Boolean      @default(false)
+  observacao     String?
+  parecerTecnico String?
+  assinadoEm     DateTime?
+  validadoEm     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  itemOrdem ItemOrdem @relation(fields: [itemOrdemId], references: [id])
+  biomedico User      @relation(fields: [biomedicoId], references: [id])
+
+  @@index([biomedicoId])
+  @@map("resultados_exame")
+}
+
+model Laudo {
+  id      String @id @default(cuid())
+  ordemId String @unique
+
+  // Gerar na aplicacao com token seguro.
+  hashAutenticacao String @unique
+
+  urlPdf       String?
+  qrCodeUrl    String?
+  status       StatusLaudo @default(GERANDO)
+  liberadoEm   DateTime?
+  expiracaoUrl DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ordem        OrdemServico @relation(fields: [ordemId], references: [id])
+  notificacoes Notificacao[]
+
+  @@map("laudos")
+}
+
+model Notificacao {
+  id      String @id @default(cuid())
+  laudoId String
+
+  canal      Canal
+  destino    String
+  status     StatusNotif @default(PENDENTE)
+  enviadoEm  DateTime?
+  tentativas Int         @default(0)
+  erro       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  laudo Laudo @relation(fields: [laudoId], references: [id])
+
+  @@index([laudoId])
+  @@map("notificacoes")
+}
+
+// -----------------------------------------------------
+// AUDITORIA
+// -----------------------------------------------------
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  acao        String
+  entidade    String
+  entidadeId  String?
+  ip          String
+  userAgent   String?
+  dadosAntes  Json?
+  dadosDepois Json?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entidade, entidadeId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
