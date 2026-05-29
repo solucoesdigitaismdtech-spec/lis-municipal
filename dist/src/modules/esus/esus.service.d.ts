@@ -28,14 +28,14 @@ export declare class EsusService {
     obterStatusConexao(laboratorioId: string): Promise<{
         configurada: boolean;
     } | {
+        id: string;
+        createdAt: Date;
+        ativa: boolean;
         porta: number;
         banco: string;
-        id: string;
-        ativa: boolean;
         ultimoTesteEm: Date | null;
         statusConexao: string | null;
         erroConexao: string | null;
-        createdAt: Date;
         configurada: boolean;
     }>;
     testarConexaoExistente(laboratorioId: string): Promise<{

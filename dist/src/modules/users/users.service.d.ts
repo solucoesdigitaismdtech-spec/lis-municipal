@@ -7,22 +7,22 @@ export declare class UsersService {
     constructor(prisma: PrismaService);
     create(createUserDto: CreateUserDto, adminLaboratorioId: string): Promise<{
         id: string;
-        laboratorioId: string;
         createdAt: Date;
         name: string;
+        laboratorioId: string;
         email: string;
         role: import("@prisma/client").$Enums.UserRole;
         active: boolean;
     }>;
     findByEmail(email: string): Promise<{
         id: string;
-        laboratorioId: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
+        laboratorioId: string;
         email: string;
-        role: import("@prisma/client").$Enums.UserRole;
         passwordHash: string;
+        role: import("@prisma/client").$Enums.UserRole;
         active: boolean;
         twoFactorSecretEncrypted: string | null;
         twoFactorEnabled: boolean;
@@ -30,8 +30,8 @@ export declare class UsersService {
     } | null>;
     findById(id: string): Promise<{
         id: string;
-        laboratorioId: string;
         name: string;
+        laboratorioId: string;
         email: string;
         role: import("@prisma/client").$Enums.UserRole;
         active: boolean;

@@ -7,72 +7,72 @@ export declare class LaboratoriosService {
     constructor(prisma: PrismaService);
     create(dto: CreateLaboratorioDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        nome: string;
-        ativo: boolean;
         cnes: string;
+        nome: string;
         municipio: string;
         uf: string;
         cnpj: string | null;
         responsavelTecnico: string | null;
         crbm: string | null;
         logoUrl: string | null;
+        ativo: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     findAll(): Promise<({
         _count: {
-            pacientes: number;
             users: number;
             unidades: number;
+            pacientes: number;
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        nome: string;
-        ativo: boolean;
         cnes: string;
+        nome: string;
         municipio: string;
         uf: string;
         cnpj: string | null;
         responsavelTecnico: string | null;
         crbm: string | null;
         logoUrl: string | null;
+        ativo: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     })[]>;
     findOne(id: string): Promise<{
         _count: {
-            ordens: number;
-            pacientes: number;
             users: number;
             unidades: number;
+            pacientes: number;
+            ordens: number;
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        nome: string;
-        ativo: boolean;
         cnes: string;
+        nome: string;
         municipio: string;
         uf: string;
         cnpj: string | null;
         responsavelTecnico: string | null;
         crbm: string | null;
         logoUrl: string | null;
+        ativo: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     update(id: string, dto: UpdateLaboratorioDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        nome: string;
-        ativo: boolean;
         cnes: string;
+        nome: string;
         municipio: string;
         uf: string;
         cnpj: string | null;
         responsavelTecnico: string | null;
         crbm: string | null;
         logoUrl: string | null;
+        ativo: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     toggleActive(id: string, ativo: boolean): Promise<{
         id: string;

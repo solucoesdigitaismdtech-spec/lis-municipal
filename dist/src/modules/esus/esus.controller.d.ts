@@ -22,13 +22,13 @@ export declare class EsusController {
         configurada: boolean;
     } | {
         id: string;
+        createdAt: Date;
+        ativa: boolean;
         porta: number;
         banco: string;
-        ativa: boolean;
         ultimoTesteEm: Date | null;
         statusConexao: string | null;
         erroConexao: string | null;
-        createdAt: Date;
         configurada: boolean;
     }>;
     testarConexao(laboratorioId: string): Promise<{

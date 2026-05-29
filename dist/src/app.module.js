@@ -7,6 +7,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
+const exames_module_1 = require("./modules/exames/exames.module");
+const ordens_module_1 = require("./modules/ordens/ordens.module");
 const esus_module_1 = require("./modules/esus/esus.module");
 const pacientes_module_1 = require("./modules/pacientes/pacientes.module");
 const common_1 = require("@nestjs/common");
@@ -37,6 +39,8 @@ exports.AppModule = AppModule = __decorate([
             unidades_module_1.UnidadesModule,
             pacientes_module_1.PacientesModule,
             esus_module_1.EsusModule,
+            exames_module_1.ExamesModule,
+            ordens_module_1.OrdensModule,
         ],
         providers: [
             {

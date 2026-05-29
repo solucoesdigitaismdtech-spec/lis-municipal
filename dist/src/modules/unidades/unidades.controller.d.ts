@@ -6,56 +6,56 @@ export declare class UnidadesController {
     constructor(unidadesService: UnidadesService);
     create(dto: CreateUnidadeDto, laboratorioId: string): Promise<{
         id: string;
-        laboratorioId: string;
-        ativa: boolean;
+        cnes: string | null;
+        nome: string;
         createdAt: Date;
         updatedAt: Date;
-        nome: string;
+        laboratorioId: string;
         endereco: string | null;
-        cnes: string | null;
         tipo: import("@prisma/client").$Enums.TipoUnidade;
+        ativa: boolean;
     }>;
     findAll(laboratorioId: string): Promise<({
         _count: {
-            ordens: number;
             pacientes: number;
+            ordens: number;
         };
     } & {
         id: string;
-        laboratorioId: string;
-        ativa: boolean;
+        cnes: string | null;
+        nome: string;
         createdAt: Date;
         updatedAt: Date;
-        nome: string;
+        laboratorioId: string;
         endereco: string | null;
-        cnes: string | null;
         tipo: import("@prisma/client").$Enums.TipoUnidade;
+        ativa: boolean;
     })[]>;
     findOne(id: string, laboratorioId: string): Promise<{
         id: string;
-        laboratorioId: string;
-        ativa: boolean;
+        cnes: string | null;
+        nome: string;
         createdAt: Date;
         updatedAt: Date;
-        nome: string;
+        laboratorioId: string;
         endereco: string | null;
-        cnes: string | null;
         tipo: import("@prisma/client").$Enums.TipoUnidade;
+        ativa: boolean;
     }>;
     update(id: string, dto: UpdateUnidadeDto, laboratorioId: string): Promise<{
         id: string;
-        laboratorioId: string;
-        ativa: boolean;
+        cnes: string | null;
+        nome: string;
         createdAt: Date;
         updatedAt: Date;
-        nome: string;
+        laboratorioId: string;
         endereco: string | null;
-        cnes: string | null;
         tipo: import("@prisma/client").$Enums.TipoUnidade;
+        ativa: boolean;
     }>;
     toggleActive(id: string, ativa: boolean, laboratorioId: string): Promise<{
         id: string;
-        ativa: boolean;
         nome: string;
+        ativa: boolean;
     }>;
 }

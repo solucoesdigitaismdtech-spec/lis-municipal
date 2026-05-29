@@ -1,3 +1,5 @@
+import { ExamesModule } from './modules/exames/exames.module';
+import { OrdensModule } from './modules/ordens/ordens.module';
 import { EsusModule } from './modules/esus/esus.module';
 import { PacientesModule } from './modules/pacientes/pacientes.module';
 import { Module } from '@nestjs/common';
@@ -43,7 +45,11 @@ import { UnidadesModule } from './modules/unidades/unidades.module';
     EsusModule,
 
     // ExamesModule,
+    ExamesModule,
+
     // OrdensModule,
+    OrdensModule,
+
     // ResultadosModule,
     // LaudosModule,
     // AuditoriaModule,
