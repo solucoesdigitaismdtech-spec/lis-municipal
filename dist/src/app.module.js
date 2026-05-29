@@ -7,6 +7,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
+const esus_module_1 = require("./modules/esus/esus.module");
+const pacientes_module_1 = require("./modules/pacientes/pacientes.module");
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const core_1 = require("@nestjs/core");
@@ -15,6 +17,8 @@ const prisma_module_1 = require("./prisma/prisma.module");
 const crypto_module_1 = require("./common/crypto/crypto.module");
 const auth_module_1 = require("./modules/auth/auth.module");
 const users_module_1 = require("./modules/users/users.module");
+const laboratorios_module_1 = require("./modules/laboratorios/laboratorios.module");
+const unidades_module_1 = require("./modules/unidades/unidades.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -29,6 +33,10 @@ exports.AppModule = AppModule = __decorate([
             crypto_module_1.CryptoModule,
             auth_module_1.AuthModule,
             users_module_1.UsersModule,
+            laboratorios_module_1.LaboratoriosModule,
+            unidades_module_1.UnidadesModule,
+            pacientes_module_1.PacientesModule,
+            esus_module_1.EsusModule,
         ],
         providers: [
             {

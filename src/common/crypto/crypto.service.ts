@@ -162,6 +162,30 @@ export class CryptoService {
   }
 
   /**
+   * Gera um hash HMAC-SHA256 do CPF para busca.
+   *
+   * Diferença para o hash() comum:
+   *   - hash() usa SHA-256 simples
+   *   - hashCpf() usa HMAC com a ENCRYPTION_KEY como segredo
+   *
+   * Por que HMAC? Sem a chave secreta, ninguém consegue gerar
+   * o mesmo hash mesmo sabendo o CPF. Protege contra ataques
+   * de "rainbow table" (tabelas pré-calculadas de hashes).
+   *
+   * É determinístico: o mesmo CPF sempre gera o mesmo hash,
+   * permitindo busca no banco.
+   *
+   * @param cpf — CPF normalizado (só dígitos)
+   * @returns hash HMAC-SHA256 em hexadecimal
+   */
+  hashCpf(cpf: string): string {
+    return crypto
+      .createHmac('sha256', this.encryptionKey)
+      .update(cpf.trim())
+      .digest('hex');
+  }
+
+  /**
    * Gera um hash SHA-256 de um objeto JSON.
    * Usado para garantir integridade do snapshot e-SUS.
    *

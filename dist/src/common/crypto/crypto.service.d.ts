@@ -10,6 +10,7 @@ export declare class CryptoService {
     encrypt(text: string): string;
     decrypt(encryptedText: string): string;
     hash(text: string): string;
+    hashCpf(cpf: string): string;
     hashObject(data: object): string;
     maskCpf(cpf: string): string;
 }

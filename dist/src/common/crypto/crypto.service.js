@@ -118,6 +118,12 @@ let CryptoService = CryptoService_1 = class CryptoService {
             .update(text.trim().toLowerCase())
             .digest('hex');
     }
+    hashCpf(cpf) {
+        return crypto
+            .createHmac('sha256', this.encryptionKey)
+            .update(cpf.trim())
+            .digest('hex');
+    }
     hashObject(data) {
         const json = JSON.stringify(data, Object.keys(data).sort());
         return crypto.createHash('sha256').update(json).digest('hex');
