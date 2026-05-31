@@ -5,12 +5,14 @@ import {
   IsArray,
   ArrayMinSize,
   IsEnum,
+  IsDateString,
   MaxLength,
 } from 'class-validator';
 import { Prioridade } from '@prisma/client';
 
 /**
- * CreateOrdemDto — valida os dados ao abrir uma ordem de serviço.
+ * CreateOrdemDto — SESSÃO 1
+ * Agora com dataAgendamento (quando o paciente vem coletar).
  */
 export class CreateOrdemDto {
   @IsString()
@@ -34,6 +36,10 @@ export class CreateOrdemDto {
   @IsOptional()
   @IsEnum(Prioridade, { message: 'Prioridade: NORMAL, URGENTE ou CRITICO' })
   prioridade?: Prioridade;
+
+  @IsOptional()
+  @IsDateString({}, { message: 'Data de agendamento inválida (use AAAA-MM-DD)' })
+  dataAgendamento?: string;
 
   @IsOptional()
   @IsString()

@@ -1,3 +1,5 @@
+import { ResultadosModule } from './modules/resultados/resultados.module';
+import { LaudosModule } from './modules/laudos/laudos.module';
 import { ExamesModule } from './modules/exames/exames.module';
 import { OrdensModule } from './modules/ordens/ordens.module';
 import { EsusModule } from './modules/esus/esus.module';
@@ -51,7 +53,11 @@ import { UnidadesModule } from './modules/unidades/unidades.module';
     OrdensModule,
 
     // ResultadosModule,
+    ResultadosModule,
+
     // LaudosModule,
+    LaudosModule,
+    
     // AuditoriaModule,
   ],
   providers: [

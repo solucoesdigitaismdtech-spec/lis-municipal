@@ -7,6 +7,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
+const resultados_module_1 = require("./modules/resultados/resultados.module");
+const laudos_module_1 = require("./modules/laudos/laudos.module");
 const exames_module_1 = require("./modules/exames/exames.module");
 const ordens_module_1 = require("./modules/ordens/ordens.module");
 const esus_module_1 = require("./modules/esus/esus.module");
@@ -41,6 +43,8 @@ exports.AppModule = AppModule = __decorate([
             esus_module_1.EsusModule,
             exames_module_1.ExamesModule,
             ordens_module_1.OrdensModule,
+            resultados_module_1.ResultadosModule,
+            laudos_module_1.LaudosModule,
         ],
         providers: [
             {

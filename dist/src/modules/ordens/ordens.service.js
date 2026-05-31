@@ -53,6 +53,8 @@ let OrdensService = OrdensService_1 = class OrdensService {
                 medicoSolicitante: dto.medicoSolicitante,
                 prioridade: dto.prioridade ?? 'NORMAL',
                 observacoes: dto.observacoes,
+                status: client_1.StatusOS.AGENDADA,
+                dataAgendamento: dto.dataAgendamento ? new Date(dto.dataAgendamento) : new Date(),
                 itens: {
                     create: exames.map((exame) => ({
                         exameId: exame.id,
@@ -64,7 +66,7 @@ let OrdensService = OrdensService_1 = class OrdensService {
                 itens: { include: { exame: { select: { nome: true, codigo: true } } } },
             },
         });
-        this.logger.log(`OS criada: ${protocolo} — ${exames.length} exame(s)`);
+        this.logger.log(`OS agendada: ${protocolo} — ${exames.length} exame(s)`);
         return ordem;
     }
     async findAll(laboratorioId, filtros) {
@@ -92,6 +94,29 @@ let OrdensService = OrdensService_1 = class OrdensService {
         return {
             dados: ordens,
             paginacao: { pagina, limite, total, totalPaginas: Math.ceil(total / limite) },
+        };
+    }
+    async agendaDoDia(laboratorioId, data) {
+        const dia = data ? new Date(data) : new Date();
+        const inicio = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 0, 0, 0);
+        const fim = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 23, 59, 59);
+        const ordens = await this.prisma.ordemServico.findMany({
+            where: {
+                laboratorioId,
+                dataAgendamento: { gte: inicio, lte: fim },
+                status: { in: [client_1.StatusOS.AGENDADA, client_1.StatusOS.COLETA_REALIZADA] },
+            },
+            orderBy: [{ prioridade: 'desc' }, { dataAgendamento: 'asc' }],
+            include: {
+                paciente: { select: { id: true, nome: true } },
+                unidade: { select: { nome: true } },
+                _count: { select: { itens: true } },
+            },
+        });
+        return {
+            data: inicio.toISOString().split('T')[0],
+            total: ordens.length,
+            ordens,
         };
     }
     async findOne(id, laboratorioId) {
@@ -123,18 +148,28 @@ let OrdensService = OrdensService_1 = class OrdensService {
         }
         const itemAtualizado = await this.prisma.itemOrdem.update({
             where: { id: itemId },
-            data: {
-                status: client_1.StatusItem.COLETADO,
-                coletadoEm: new Date(),
-            },
+            data: { status: client_1.StatusItem.COLETADO, coletadoEm: new Date() },
         });
         await this.atualizarStatusOrdem(ordemId);
         return itemAtualizado;
     }
+    async registrarColetaCompleta(ordemId, laboratorioId) {
+        await this.findOne(ordemId, laboratorioId);
+        await this.prisma.itemOrdem.updateMany({
+            where: { ordemId, status: client_1.StatusItem.AGUARDANDO_COLETA },
+            data: { status: client_1.StatusItem.COLETADO, coletadoEm: new Date() },
+        });
+        await this.prisma.ordemServico.update({
+            where: { id: ordemId },
+            data: { status: client_1.StatusOS.COLETA_REALIZADA, dataColeta: new Date() },
+        });
+        this.logger.log(`Coleta completa registrada — OS ${ordemId}`);
+        return { message: 'Coleta de todos os exames registrada' };
+    }
     async cancelar(id, laboratorioId) {
         const ordem = await this.findOne(id, laboratorioId);
-        if (ordem.status === client_1.StatusOS.CONCLUIDA) {
-            throw new common_1.BadRequestException('Não é possível cancelar uma OS concluída');
+        if (ordem.status === client_1.StatusOS.LIBERADA || ordem.status === client_1.StatusOS.CONCLUIDA) {
+            throw new common_1.BadRequestException('Não é possível cancelar uma OS já liberada');
         }
         return this.prisma.ordemServico.update({
             where: { id },
@@ -143,10 +178,7 @@ let OrdensService = OrdensService_1 = class OrdensService {
     }
     async gerarProtocolo(laboratorioId) {
         const hoje = new Date();
-        const ano = hoje.getFullYear();
-        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-        const dia = String(hoje.getDate()).padStart(2, '0');
-        const dataStr = `${ano}${mes}${dia}`;
+        const dataStr = `${hoje.getFullYear()}${String(hoje.getMonth() + 1).padStart(2, '0')}${String(hoje.getDate()).padStart(2, '0')}`;
         const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
         const contagem = await this.prisma.ordemServico.count({
             where: { laboratorioId, createdAt: { gte: inicioDia } },
@@ -155,23 +187,16 @@ let OrdensService = OrdensService_1 = class OrdensService {
         return `LAB-${dataStr}-${sequencial}`;
     }
     async atualizarStatusOrdem(ordemId) {
-        const itens = await this.prisma.itemOrdem.findMany({
-            where: { ordemId },
-        });
-        const todosColetados = itens.every((i) => i.status !== client_1.StatusItem.AGUARDANDO_COLETA);
+        const itens = await this.prisma.itemOrdem.findMany({ where: { ordemId } });
         const algumColetado = itens.some((i) => i.status !== client_1.StatusItem.AGUARDANDO_COLETA);
-        let novoStatus = null;
-        if (todosColetados) {
-            novoStatus = client_1.StatusOS.EM_ANALISE;
-        }
-        else if (algumColetado) {
-            novoStatus = client_1.StatusOS.EM_COLETA;
-        }
-        if (novoStatus) {
-            await this.prisma.ordemServico.update({
-                where: { id: ordemId },
-                data: { status: novoStatus },
-            });
+        if (algumColetado) {
+            const ordem = await this.prisma.ordemServico.findUnique({ where: { id: ordemId } });
+            if (ordem && (ordem.status === client_1.StatusOS.AGENDADA || ordem.status === client_1.StatusOS.ABERTA)) {
+                await this.prisma.ordemServico.update({
+                    where: { id: ordemId },
+                    data: { status: client_1.StatusOS.COLETA_REALIZADA, dataColeta: new Date() },
+                });
+            }
         }
     }
 };

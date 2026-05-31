@@ -19,10 +19,10 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 /**
- * OrdensController
+ * OrdensController — SESSÃO 1
  *
- * Ordens de Serviço — o pedido de exames.
- * Criar/coletar: ADMIN e TECNICO. Listar/ver: todos os perfis.
+ * Criar OS / registrar coleta: ADMIN e TECNICO (recepção/coleta).
+ * Listagem e agenda: todos os perfis logados.
  */
 @Controller('ordens')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -54,6 +54,18 @@ export class OrdensController {
     });
   }
 
+  /**
+   * GET /ordens/agenda?data=2026-05-29
+   * Lista os pacientes agendados para coletar no dia.
+   */
+  @Get('agenda')
+  agendaDoDia(
+    @CurrentUser('laboratorioId') laboratorioId: string,
+    @Query('data') data?: string,
+  ) {
+    return this.ordensService.agendaDoDia(laboratorioId, data);
+  }
+
   @Get(':id')
   findOne(
     @Param('id') id: string,
@@ -70,6 +82,19 @@ export class OrdensController {
     @CurrentUser('laboratorioId') laboratorioId: string,
   ) {
     return this.ordensService.registrarColeta(ordemId, itemId, laboratorioId);
+  }
+
+  /**
+   * PATCH /ordens/:id/coletar-tudo
+   * Registra a coleta de todos os exames de uma vez.
+   */
+  @Patch(':id/coletar-tudo')
+  @Roles(UserRole.ADMIN, UserRole.TECNICO)
+  registrarColetaCompleta(
+    @Param('id') ordemId: string,
+    @CurrentUser('laboratorioId') laboratorioId: string,
+  ) {
+    return this.ordensService.registrarColetaCompleta(ordemId, laboratorioId);
   }
 
   @Patch(':id/cancelar')

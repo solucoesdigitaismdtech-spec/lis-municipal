@@ -36,11 +36,17 @@ let OrdensController = class OrdensController {
             limite: limite ? parseInt(limite) : 20,
         });
     }
+    agendaDoDia(laboratorioId, data) {
+        return this.ordensService.agendaDoDia(laboratorioId, data);
+    }
     findOne(id, laboratorioId) {
         return this.ordensService.findOne(id, laboratorioId);
     }
     registrarColeta(ordemId, itemId, laboratorioId) {
         return this.ordensService.registrarColeta(ordemId, itemId, laboratorioId);
+    }
+    registrarColetaCompleta(ordemId, laboratorioId) {
+        return this.ordensService.registrarColetaCompleta(ordemId, laboratorioId);
     }
     cancelar(id, laboratorioId) {
         return this.ordensService.cancelar(id, laboratorioId);
@@ -69,6 +75,14 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], OrdensController.prototype, "findAll", null);
 __decorate([
+    (0, common_1.Get)('agenda'),
+    __param(0, (0, current_user_decorator_1.CurrentUser)('laboratorioId')),
+    __param(1, (0, common_1.Query)('data')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], OrdensController.prototype, "agendaDoDia", null);
+__decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, current_user_decorator_1.CurrentUser)('laboratorioId')),
@@ -86,6 +100,15 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", void 0)
 ], OrdensController.prototype, "registrarColeta", null);
+__decorate([
+    (0, common_1.Patch)(':id/coletar-tudo'),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.TECNICO),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('laboratorioId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], OrdensController.prototype, "registrarColetaCompleta", null);
 __decorate([
     (0, common_1.Patch)(':id/cancelar'),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN),

@@ -5,5 +5,6 @@ export declare class CreateOrdemDto {
     exameIds: string[];
     medicoSolicitante?: string;
     prioridade?: Prioridade;
+    dataAgendamento?: string;
     observacoes?: string;
 }

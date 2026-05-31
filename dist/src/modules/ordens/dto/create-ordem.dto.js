@@ -18,6 +18,7 @@ class CreateOrdemDto {
     exameIds;
     medicoSolicitante;
     prioridade;
+    dataAgendamento;
     observacoes;
 }
 exports.CreateOrdemDto = CreateOrdemDto;
@@ -48,6 +49,11 @@ __decorate([
     (0, class_validator_1.IsEnum)(client_1.Prioridade, { message: 'Prioridade: NORMAL, URGENTE ou CRITICO' }),
     __metadata("design:type", String)
 ], CreateOrdemDto.prototype, "prioridade", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsDateString)({}, { message: 'Data de agendamento inválida (use AAAA-MM-DD)' }),
+    __metadata("design:type", String)
+], CreateOrdemDto.prototype, "dataAgendamento", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),

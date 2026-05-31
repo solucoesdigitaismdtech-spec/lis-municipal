@@ -13,26 +13,27 @@ export declare class OrdensController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            ordemId: string;
             exameId: string;
             status: import("@prisma/client").$Enums.StatusItem;
             coletadoEm: Date | null;
             prazoEntrega: Date | null;
-            ordemId: string;
         })[];
     } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         laboratorioId: string;
+        status: import("@prisma/client").$Enums.StatusOS;
+        protocolo: string;
         pacienteId: string;
         unidadeId: string;
+        solicitanteId: string;
         medicoSolicitante: string | null;
         prioridade: import("@prisma/client").$Enums.Prioridade;
         observacoes: string | null;
-        protocolo: string;
-        status: import("@prisma/client").$Enums.StatusOS;
         dataColeta: Date | null;
-        solicitanteId: string;
+        dataAgendamento: Date | null;
     }>;
     findAll(laboratorioId: string, status?: string, pagina?: string, limite?: string): Promise<{
         dados: ({
@@ -52,15 +53,16 @@ export declare class OrdensController {
             createdAt: Date;
             updatedAt: Date;
             laboratorioId: string;
+            status: import("@prisma/client").$Enums.StatusOS;
+            protocolo: string;
             pacienteId: string;
             unidadeId: string;
+            solicitanteId: string;
             medicoSolicitante: string | null;
             prioridade: import("@prisma/client").$Enums.Prioridade;
             observacoes: string | null;
-            protocolo: string;
-            status: import("@prisma/client").$Enums.StatusOS;
             dataColeta: Date | null;
-            solicitanteId: string;
+            dataAgendamento: Date | null;
         })[];
         paginacao: {
             pagina: number;
@@ -68,6 +70,37 @@ export declare class OrdensController {
             total: number;
             totalPaginas: number;
         };
+    }>;
+    agendaDoDia(laboratorioId: string, data?: string): Promise<{
+        data: string;
+        total: number;
+        ordens: ({
+            _count: {
+                itens: number;
+            };
+            unidade: {
+                nome: string;
+            };
+            paciente: {
+                id: string;
+                nome: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            laboratorioId: string;
+            status: import("@prisma/client").$Enums.StatusOS;
+            protocolo: string;
+            pacienteId: string;
+            unidadeId: string;
+            solicitanteId: string;
+            medicoSolicitante: string | null;
+            prioridade: import("@prisma/client").$Enums.Prioridade;
+            observacoes: string | null;
+            dataColeta: Date | null;
+            dataAgendamento: Date | null;
+        })[];
     }>;
     findOne(id: string, laboratorioId: string): Promise<{
         unidade: {
@@ -92,50 +125,55 @@ export declare class OrdensController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            ordemId: string;
             exameId: string;
             status: import("@prisma/client").$Enums.StatusItem;
             coletadoEm: Date | null;
             prazoEntrega: Date | null;
-            ordemId: string;
         })[];
     } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         laboratorioId: string;
+        status: import("@prisma/client").$Enums.StatusOS;
+        protocolo: string;
         pacienteId: string;
         unidadeId: string;
+        solicitanteId: string;
         medicoSolicitante: string | null;
         prioridade: import("@prisma/client").$Enums.Prioridade;
         observacoes: string | null;
-        protocolo: string;
-        status: import("@prisma/client").$Enums.StatusOS;
         dataColeta: Date | null;
-        solicitanteId: string;
+        dataAgendamento: Date | null;
     }>;
     registrarColeta(ordemId: string, itemId: string, laboratorioId: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        ordemId: string;
         exameId: string;
         status: import("@prisma/client").$Enums.StatusItem;
         coletadoEm: Date | null;
         prazoEntrega: Date | null;
-        ordemId: string;
+    }>;
+    registrarColetaCompleta(ordemId: string, laboratorioId: string): Promise<{
+        message: string;
     }>;
     cancelar(id: string, laboratorioId: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
         laboratorioId: string;
+        status: import("@prisma/client").$Enums.StatusOS;
+        protocolo: string;
         pacienteId: string;
         unidadeId: string;
+        solicitanteId: string;
         medicoSolicitante: string | null;
         prioridade: import("@prisma/client").$Enums.Prioridade;
         observacoes: string | null;
-        protocolo: string;
-        status: import("@prisma/client").$Enums.StatusOS;
         dataColeta: Date | null;
-        solicitanteId: string;
+        dataAgendamento: Date | null;
     }>;
 }
