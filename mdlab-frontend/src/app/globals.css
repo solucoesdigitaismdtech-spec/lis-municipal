@@ -1,0 +1,105 @@
+/* ═══════════════════════════════════════════════════════════
+   MD Lab — Estilos globais
+   Paleta: Marinho #1e1b4b · Teal #0d9488 · Teal claro #2dd4bf · Índigo #4f46e5
+   Fontes: Sora (display) + Outfit (corpo)
+   ═══════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600&display=swap');
+
+:root {
+  /* Cores da marca */
+  --marinho: #1e1b4b;
+  --teal-900: #042f2e;
+  --teal-700: #0f766e;
+  --teal-600: #0d9488;
+  --teal-500: #14b8a6;
+  --teal-400: #2dd4bf;
+  --teal-300: #5eead4;
+  --teal-50: #f0fdfa;
+  --indigo-600: #4f46e5;
+  --indigo-400: #818cf8;
+
+  /* Neutros */
+  --ink: #0a1f1e;
+  --branco: #ffffff;
+  --cinza-50: #f8fafc;
+  --cinza-100: #f1f5f9;
+  --cinza-200: #e2e8f0;
+  --cinza-400: #94a3b8;
+  --cinza-600: #475569;
+  --cinza-700: #334155;
+
+  /* Semânticos */
+  --sucesso: #0d9488;
+  --alerta: #f59e0b;
+  --erro: #dc2626;
+
+  /* Sombras */
+  --sombra-sm: 0 2px 8px rgba(13, 148, 136, 0.08);
+  --sombra-md: 0 8px 24px rgba(13, 148, 136, 0.12);
+  --sombra-lg: 0 16px 48px rgba(13, 148, 136, 0.16);
+
+  /* Raios */
+  --raio-sm: 10px;
+  --raio-md: 14px;
+  --raio-lg: 20px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Outfit', -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--cinza-50);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+/* Classe utilitária para o gradiente da marca */
+.gradiente-marca {
+  background: linear-gradient(135deg, var(--teal-600), var(--indigo-600));
+}
+
+/* Animações reutilizáveis */
+@keyframes surge {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes flutua {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-24px); }
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}

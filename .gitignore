@@ -1,5 +1,46 @@
-node_modules
-# Keep environment variables out of version control
-.env
+# ───────────────────────────────────────────────
+# .gitignore — MD Lab (monorepo: api + mdlab-frontend)
+# ───────────────────────────────────────────────
 
-/generated/prisma
+# Dependências (geradas pelo npm install)
+node_modules/
+**/node_modules/
+
+# Build / compilado (gerado automaticamente)
+dist/
+**/dist/
+.next/
+**/.next/
+build/
+out/
+
+# Variáveis de ambiente e segredos (NUNCA versionar!)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Arquivos gerados em runtime (PDFs, mapas)
+laudos/*.pdf
+mapas-trabalho/*.pdf
+
+# Cache e temporários
+*.tsbuildinfo
+.cache/
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Prisma (mantém schema e migrations, ignora gerado)
+**/generated/
