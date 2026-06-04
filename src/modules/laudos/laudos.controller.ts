@@ -5,12 +5,12 @@ import {
   Param,
   Res,
   UseGuards,
-  HttpCode,
-  HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { LaudosService } from './laudos.service';
+import { LaudoPdfService } from './laudo-pdf.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -19,52 +19,63 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 /**
  * LaudosController
  *
- * Geração e validação de laudos.
- *
- * Rota PÚBLICA: /laudos/validar/:hash (sem login — para o QR Code)
- * Rotas protegidas: gerar e baixar o PDF.
+ * Operações de laudo que exigem login.
+ * Gerar laudo: ADMIN e BIOMEDICO. Visualizar/baixar: todos os perfis.
  */
 @Controller('laudos')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class LaudosController {
-  constructor(private readonly laudosService: LaudosService) {}
+  constructor(
+    private readonly laudosService: LaudosService,
+    private readonly laudoPdfService: LaudoPdfService,
+  ) {}
 
-  /**
-   * GET /laudos/validar/:hash
-   * PÚBLICO — usado pelo QR Code para validar autenticidade.
-   * Não exige login.
-   */
-  @Get('validar/:hash')
-  validarPublico(@Param('hash') hash: string) {
-    return this.laudosService.validarPublico(hash);
+  @Get()
+  listar(@CurrentUser('laboratorioId') laboratorioId: string) {
+    return this.laudosService.listar(laboratorioId);
   }
 
-  /**
-   * POST /laudos/gerar/:ordemId
-   * Gera o laudo PDF de uma ordem concluída. BIOMEDICO ou ADMIN.
-   */
-  @Post('gerar/:ordemId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('ordem/:ordemId')
+  dados(
+    @Param('ordemId') ordemId: string,
+    @CurrentUser('laboratorioId') laboratorioId: string,
+  ) {
+    return this.laudosService.dadosLaudo(ordemId, laboratorioId);
+  }
+
+  @Post('ordem/:ordemId/gerar')
   @Roles(UserRole.ADMIN, UserRole.BIOMEDICO)
-  @HttpCode(HttpStatus.OK)
   gerar(
     @Param('ordemId') ordemId: string,
     @CurrentUser('laboratorioId') laboratorioId: string,
   ) {
-    return this.laudosService.gerarLaudo(ordemId, laboratorioId);
+    return this.laudosService.gerar(ordemId, laboratorioId);
   }
 
   /**
-   * GET /laudos/download/:ordemId
-   * Baixa o PDF do laudo. Exige login.
+   * Gera e devolve o PDF do laudo (Puppeteer).
+   * O navegador faz o download direto deste endpoint.
    */
-  @Get('download/:ordemId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  async download(
+  @Get('ordem/:ordemId/pdf')
+  async pdf(
     @Param('ordemId') ordemId: string,
     @CurrentUser('laboratorioId') laboratorioId: string,
     @Res() res: Response,
   ) {
-    const caminho = await this.laudosService.obterCaminhoPdf(ordemId, laboratorioId);
-    return res.download(caminho);
+    // Pega os dados completos da OS (mesmo método usado na visualização)
+    const ordem = await this.laudosService.dadosLaudo(ordemId, laboratorioId);
+    if (!ordem) {
+      throw new NotFoundException('Ordem de serviço não encontrada');
+    }
+
+    const pdf = await this.laudoPdfService.gerarPdf(ordem);
+    const nomeArquivo = `laudo-${ordem.protocolo || ordemId}.pdf`;
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${nomeArquivo}"`,
+      'Content-Length': pdf.length,
+    });
+    res.end(pdf);
   }
 }

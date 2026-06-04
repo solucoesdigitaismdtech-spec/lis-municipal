@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal do Paciente — Resultados de Exames</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --verde: #0d9488;
+    --verde-escuro: #0f766e;
+    --verde-claro: #ccfbf1;
+    --bg: #f0fdfa;
+    --texto: #134e4a;
+    --muted: #5f8a85;
+    --branco: #ffffff;
+    --borda: #d6f0eb;
+    --amarelo: #f59e0b;
+    --vermelho: #dc2626;
+    --sombra: 0 10px 40px rgba(13, 148, 136, 0.12);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 20% 10%, rgba(204,251,241,.6) 0%, transparent 40%),
+                      radial-gradient(circle at 90% 80%, rgba(204,251,241,.5) 0%, transparent 35%);
+    color: var(--texto);
+    min-height: 100vh;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .container { width: 100%; max-width: 480px; }
+
+  /* Cabeçalho */
+  .topo {
+    text-align: center;
+    padding: 28px 0 22px;
+  }
+  .topo .icone {
+    width: 64px; height: 64px;
+    background: var(--verde);
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    box-shadow: var(--sombra);
+    margin-bottom: 14px;
+  }
+  .topo h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--verde-escuro);
+    letter-spacing: -0.5px;
+  }
+  .topo p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  /* Card */
+  .card {
+    background: var(--branco);
+    border: 1px solid var(--borda);
+    border-radius: 20px;
+    padding: 26px 24px;
+    box-shadow: var(--sombra);
+    margin-bottom: 18px;
+  }
+
+  .card-titulo {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .card-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+  /* Formulário */
+  .campo { margin-bottom: 16px; }
+  .campo label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--verde-escuro);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .campo input {
+    width: 100%;
+    padding: 13px 15px;
+    border: 1.5px solid var(--borda);
+    border-radius: 12px;
+    font-size: 15px;
+    font-family: 'Inter', sans-serif;
+    color: var(--texto);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #fbfffe;
+  }
+  .campo input:focus {
+    outline: none;
+    border-color: var(--verde);
+    box-shadow: 0 0 0 3px rgba(13,148,136,.12);
+  }
+  .campo input::placeholder { color: #a7c9c4; }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--verde);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 6px;
+  }
+  .btn:hover { background: var(--verde-escuro); }
+  .btn:active { transform: scale(0.99); }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Resultado da consulta */
+  .resultado { display: none; }
+  .resultado.ativo { display: block; animation: surge 0.4s ease; }
+  @keyframes surge { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .info-paciente {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--borda);
+  }
+  .info-paciente .nome { font-weight: 600; font-size: 15px; }
+  .info-paciente .protocolo { font-size: 12px; color: var(--muted); font-family: monospace; }
+
+  .badge-geral {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-geral.pronto { background: var(--verde-claro); color: var(--verde-escuro); }
+  .badge-geral.andamento { background: #fef3c7; color: #92400e; }
+
+  /* Lista de exames */
+  .exame-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f9f7;
+  }
+  .exame-item:last-child { border-bottom: none; }
+  .exame-nome { font-size: 14px; font-weight: 500; }
+  .status-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+  }
+  .status-tag.pronto { background: var(--verde-claro); color: var(--verde-escuro); }
+  .status-tag.analise { background: #e0f2fe; color: #075985; }
+  .status-tag.aguardando { background: #f3f4f6; color: #6b7280; }
+
+  .btn-baixar {
+    display: none;
+    margin-top: 18px;
+    text-decoration: none;
+    text-align: center;
+  }
+  .btn-baixar.ativo { display: block; }
+
+  .erro {
+    display: none;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: var(--vermelho);
+    padding: 12px 15px;
+    border-radius: 12px;
+    font-size: 13px;
+    margin-top: 14px;
+    text-align: center;
+  }
+  .erro.ativo { display: block; }
+
+  .rodape {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 16px 0;
+    line-height: 1.6;
+  }
+
+  .voltar {
+    background: none;
+    border: none;
+    color: var(--verde);
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 16px;
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+  }
+
+  .loading { display: none; text-align: center; padding: 10px; color: var(--muted); font-size: 13px; }
+  .loading.ativo { display: block; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="topo">
+      <div class="icone">🧪</div>
+      <h1>Portal do Paciente</h1>
+      <p>Consulte o resultado dos seus exames</p>
+    </div>
+
+    <!-- Formulário de consulta -->
+    <div class="card" id="cardConsulta">
+      <div class="card-titulo">Acessar meus resultados</div>
+      <div class="card-sub">Informe os dados do seu protocolo de atendimento</div>
+
+      <div class="campo">
+        <label for="protocolo">Número do protocolo</label>
+        <input type="text" id="protocolo" placeholder="LAB-20260531-00001" autocomplete="off">
+      </div>
+      <div class="campo">
+        <label for="nascimento">Data de nascimento</label>
+        <input type="date" id="nascimento">
+      </div>
+
+      <button class="btn" id="btnConsultar" onclick="consultar()">Consultar resultados</button>
+      <div class="loading" id="loading">Consultando...</div>
+      <div class="erro" id="erro"></div>
+    </div>
+
+    <!-- Resultado da consulta -->
+    <div class="card resultado" id="cardResultado">
+      <div class="info-paciente">
+        <div>
+          <div class="nome" id="resNome"></div>
+          <div class="protocolo" id="resProtocolo"></div>
+        </div>
+        <span class="badge-geral" id="resBadge"></span>
+      </div>
+
+      <div id="listaExames"></div>
+
+      <a class="btn btn-baixar" id="btnBaixar" target="_blank">📄 Baixar laudo em PDF</a>
+
+      <button class="voltar" onclick="voltar()">← Nova consulta</button>
+    </div>
+
+    <div class="rodape" id="rodapeLab">
+      Sistema Laboratorial Municipal<br>
+      Em caso de dúvidas, procure a unidade de saúde
+    </div>
+  </div>
+
+<script>
+  // A URL da API é a mesma origem (o portal é servido pelo próprio backend)
+  const API = '/api';
+
+  async function consultar() {
+    const protocolo = document.getElementById('protocolo').value.trim();
+    const nascimento = document.getElementById('nascimento').value;
+    const erro = document.getElementById('erro');
+    const loading = document.getElementById('loading');
+    const btn = document.getElementById('btnConsultar');
+
+    erro.classList.remove('ativo');
+
+    if (!protocolo || !nascimento) {
+      erro.textContent = 'Preencha o protocolo e a data de nascimento.';
+      erro.classList.add('ativo');
+      return;
+    }
+
+    loading.classList.add('ativo');
+    btn.disabled = true;
+
+    try {
+      const url = `${API}/portal/consultar?protocolo=${encodeURIComponent(protocolo)}&nascimento=${nascimento}`;
+      const resp = await fetch(url);
+      const dados = await resp.json();
+
+      if (!resp.ok) {
+        throw new Error(dados.message || 'Não foi possível consultar.');
+      }
+
+      mostrarResultado(dados);
+    } catch (e) {
+      erro.textContent = e.message || 'Erro ao consultar. Verifique os dados.';
+      erro.classList.add('ativo');
+    } finally {
+      loading.classList.remove('ativo');
+      btn.disabled = false;
+    }
+  }
+
+  function mostrarResultado(dados) {
+    document.getElementById('cardConsulta').style.display = 'none';
+    document.getElementById('resNome').textContent = dados.paciente;
+    document.getElementById('resProtocolo').textContent = dados.protocolo;
+    document.getElementById('rodapeLab').innerHTML =
+      `${dados.laboratorio}<br>${dados.municipio}`;
+
+    const badge = document.getElementById('resBadge');
+    badge.textContent = dados.statusGeral;
+    badge.className = 'badge-geral ' + (dados.laudoPronto ? 'pronto' : 'andamento');
+
+    // Lista de exames
+    const lista = document.getElementById('listaExames');
+    lista.innerHTML = '';
+    dados.exames.forEach(ex => {
+      const classe = ex.pronto ? 'pronto' : (ex.status === 'Em análise' || ex.status === 'Em conferência' ? 'analise' : 'aguardando');
+      lista.innerHTML += `
+        <div class="exame-item">
+          <span class="exame-nome">${ex.nome}</span>
+          <span class="status-tag ${classe}">${ex.status}</span>
+        </div>`;
+    });
+
+    // Botão de baixar laudo (se pronto)
+    const btnBaixar = document.getElementById('btnBaixar');
+    if (dados.laudoPronto && dados.hashLaudo) {
+      btnBaixar.href = `${API}/laudos/baixar/${dados.hashLaudo}`;
+      btnBaixar.classList.add('ativo');
+    } else {
+      btnBaixar.classList.remove('ativo');
+    }
+
+    document.getElementById('cardResultado').classList.add('ativo');
+  }
+
+  function voltar() {
+    document.getElementById('cardResultado').classList.remove('ativo');
+    document.getElementById('cardConsulta').style.display = 'block';
+    document.getElementById('protocolo').value = '';
+    document.getElementById('nascimento').value = '';
+  }
+
+  // Permite consultar com Enter
+  document.getElementById('nascimento').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') consultar();
+  });
+</script>
+</body>
+</html>

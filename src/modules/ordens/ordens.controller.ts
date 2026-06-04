@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Patch,
+  Delete,
   Query,
   UseGuards,
   HttpCode,
@@ -13,16 +14,17 @@ import {
 import { UserRole } from '@prisma/client';
 import { OrdensService } from './ordens.service';
 import { CreateOrdemDto } from './dto/create-ordem.dto';
+import { AdicionarItemDto } from './dto/adicionar-item.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 /**
- * OrdensController — SESSÃO 1
+ * OrdensController
  *
- * Criar OS / registrar coleta: ADMIN e TECNICO (recepção/coleta).
- * Listagem e agenda: todos os perfis logados.
+ * Ordens de Serviço — o pedido de exames.
+ * Criar/coletar/editar itens: ADMIN e TECNICO. Listar/ver: todos os perfis.
  */
 @Controller('ordens')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -54,18 +56,6 @@ export class OrdensController {
     });
   }
 
-  /**
-   * GET /ordens/agenda?data=2026-05-29
-   * Lista os pacientes agendados para coletar no dia.
-   */
-  @Get('agenda')
-  agendaDoDia(
-    @CurrentUser('laboratorioId') laboratorioId: string,
-    @Query('data') data?: string,
-  ) {
-    return this.ordensService.agendaDoDia(laboratorioId, data);
-  }
-
   @Get(':id')
   findOne(
     @Param('id') id: string,
@@ -85,16 +75,42 @@ export class OrdensController {
   }
 
   /**
-   * PATCH /ordens/:id/coletar-tudo
-   * Registra a coleta de todos os exames de uma vez.
+   * Coleta todos os itens da OS de uma vez (botão "Coletar" da agenda).
    */
   @Patch(':id/coletar-tudo')
   @Roles(UserRole.ADMIN, UserRole.TECNICO)
-  registrarColetaCompleta(
-    @Param('id') ordemId: string,
+  coletarTudo(
+    @Param('id') id: string,
     @CurrentUser('laboratorioId') laboratorioId: string,
   ) {
-    return this.ordensService.registrarColetaCompleta(ordemId, laboratorioId);
+    return this.ordensService.coletarTudo(id, laboratorioId);
+  }
+
+  /**
+   * Adiciona um exame a uma OS ainda não coletada (corrigir lançamento).
+   */
+  @Post(':id/itens')
+  @Roles(UserRole.ADMIN, UserRole.TECNICO)
+  @HttpCode(HttpStatus.CREATED)
+  adicionarItem(
+    @Param('id') ordemId: string,
+    @Body() dto: AdicionarItemDto,
+    @CurrentUser('laboratorioId') laboratorioId: string,
+  ) {
+    return this.ordensService.adicionarItem(ordemId, dto.exameId, laboratorioId);
+  }
+
+  /**
+   * Remove um exame de uma OS ainda não coletada (corrigir lançamento).
+   */
+  @Delete(':id/itens/:itemId')
+  @Roles(UserRole.ADMIN, UserRole.TECNICO)
+  removerItem(
+    @Param('id') ordemId: string,
+    @Param('itemId') itemId: string,
+    @CurrentUser('laboratorioId') laboratorioId: string,
+  ) {
+    return this.ordensService.removerItem(ordemId, itemId, laboratorioId);
   }
 
   @Patch(':id/cancelar')

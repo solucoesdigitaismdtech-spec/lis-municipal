@@ -9,14 +9,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LaudosModule = void 0;
 const common_1 = require("@nestjs/common");
 const laudos_service_1 = require("./laudos.service");
+const laudo_pdf_service_1 = require("./laudo-pdf.service");
 const laudos_controller_1 = require("./laudos.controller");
+const laudos_publico_controller_1 = require("./laudos-publico.controller");
 let LaudosModule = class LaudosModule {
 };
 exports.LaudosModule = LaudosModule;
 exports.LaudosModule = LaudosModule = __decorate([
     (0, common_1.Module)({
-        controllers: [laudos_controller_1.LaudosController],
-        providers: [laudos_service_1.LaudosService],
+        controllers: [laudos_controller_1.LaudosController, laudos_publico_controller_1.LaudosPublicoController],
+        providers: [laudos_service_1.LaudosService, laudo_pdf_service_1.LaudoPdfService],
         exports: [laudos_service_1.LaudosService],
     })
 ], LaudosModule);

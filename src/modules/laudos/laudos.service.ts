@@ -4,307 +4,184 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CryptoService } from '../../common/crypto/crypto.service';
-import { StatusLaudo, StatusOS } from '@prisma/client';
-import * as crypto from 'crypto';
-import PDFDocument = require('pdfkit');
+import { StatusItem, StatusLaudo, StatusResult } from '@prisma/client';
+import { randomBytes } from 'crypto';
 import * as QRCode from 'qrcode';
-import * as fs from 'fs';
-import * as path from 'path';
 
 /**
  * LaudosService
  *
- * Gera o laudo final em PDF com QR Code de autenticação.
+ * Gera e gerencia os laudos (documento final dos exames).
  *
- * Fluxo:
- *  1. A ordem precisa estar CONCLUIDA (todos os exames assinados)
- *  2. Gera um hash de autenticação único
- *  3. Monta o PDF com os resultados
- *  4. Gera o QR Code que aponta para a validação pública
- *  5. Salva o PDF e marca o laudo como LIBERADO
- *
- * Nota: nesta versão o PDF é salvo localmente em /laudos.
- * Em produção, seria enviado para S3/R2 (deixaremos preparado).
+ * Um laudo só pode ser gerado quando TODOS os exames da OS estão
+ * validados pelo biomédico. Cada laudo recebe um hash de autenticação
+ * único e um QR code que aponta para a página pública de verificação.
  */
 @Injectable()
 export class LaudosService {
   private readonly logger = new Logger(LaudosService.name);
-  private readonly laudosDir = path.join(process.cwd(), 'laudos');
-  private readonly apiUrl: string;
 
-  constructor(
-    private prisma: PrismaService,
-    private crypto: CryptoService,
-    private config: ConfigService,
-  ) {
-    this.apiUrl = this.config.get<string>('API_URL', 'http://localhost:3333');
-    // Garante que a pasta de laudos existe
-    if (!fs.existsSync(this.laudosDir)) {
-      fs.mkdirSync(this.laudosDir, { recursive: true });
-    }
+  // URL base pública para verificação (ajuste via .env em produção)
+  private readonly urlBaseVerificacao =
+    process.env.URL_VERIFICACAO_LAUDO || 'http://localhost:3000/verificar';
+
+  constructor(private prisma: PrismaService) {}
+
+  /**
+   * Lista as ordens prontas para laudo e os laudos já gerados.
+   * Aceita tanto LIBERADA (fluxo de assinatura) quanto CONCLUIDA.
+   */
+  async listar(laboratorioId: string) {
+    const ordens = await this.prisma.ordemServico.findMany({
+      where: {
+        laboratorioId,
+        status: { in: ['LIBERADA', 'CONCLUIDA'] as any },
+      },
+      include: {
+        paciente: { select: { nome: true } },
+        unidade: { select: { nome: true } },
+        laudo: { select: { id: true, status: true, liberadoEm: true, hashAutenticacao: true } },
+        _count: { select: { itens: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return ordens;
   }
 
   /**
-   * Gera o laudo de uma ordem de serviço concluída.
+   * Gera o laudo de uma OS (ou retorna o existente).
+   *
+   * Regra: todos os itens da OS precisam estar VALIDADOS.
    */
-  async gerarLaudo(ordemId: string, laboratorioId: string) {
-    // 1. Busca a ordem com todos os dados necessários
+  async gerar(ordemId: string, laboratorioId: string) {
     const ordem = await this.prisma.ordemServico.findFirst({
       where: { id: ordemId, laboratorioId },
-      include: {
-        laboratorio: true,
-        paciente: true,
-        unidade: { select: { nome: true } },
-        itens: {
-          include: {
-            exame: { select: { nome: true, metodo: true, material: true } },
-            resultado: true,
-          },
-        },
-      },
+      include: { itens: true, laudo: true },
     });
-
     if (!ordem) {
       throw new NotFoundException('Ordem de serviço não encontrada');
     }
 
-    // 2. Confirma que está concluída
-    if (ordem.status !== StatusOS.CONCLUIDA) {
+    // Valida que todos os itens estão validados
+    const todosValidados = ordem.itens.every(
+      (i) => i.status === StatusItem.VALIDADO || i.status === StatusItem.LIBERADO,
+    );
+    if (!todosValidados) {
       throw new BadRequestException(
-        'O laudo só pode ser gerado quando todos os exames estiverem liberados',
+        'Todos os exames precisam estar validados antes de gerar o laudo',
       );
     }
 
-    // 3. Gera o hash de autenticação único
-    const hashAutenticacao = crypto.randomBytes(16).toString('hex');
+    // Se já existe laudo, retorna ele (idempotente)
+    if (ordem.laudo) {
+      return this.prisma.laudo.findUnique({ where: { id: ordem.laudo.id } });
+    }
 
-    // 4. Cria/atualiza o registro do laudo
-    const laudo = await this.prisma.laudo.upsert({
-      where: { ordemId },
-      create: {
+    // Gera hash de autenticação único (32 caracteres hex)
+    const hashAutenticacao = randomBytes(16).toString('hex');
+    const urlVerificacao = `${this.urlBaseVerificacao}/${hashAutenticacao}`;
+
+    // Gera o QR code como data URI (embutido, não precisa de storage)
+    let qrCodeUrl: string | null = null;
+    try {
+      qrCodeUrl = await QRCode.toDataURL(urlVerificacao, { width: 200, margin: 1 });
+    } catch (e) {
+      this.logger.warn(`Falha ao gerar QR code: ${e}`);
+    }
+
+    const laudo = await this.prisma.laudo.create({
+      data: {
         ordemId,
         hashAutenticacao,
-        status: StatusLaudo.GERANDO,
-      },
-      update: {
-        hashAutenticacao,
-        status: StatusLaudo.GERANDO,
-      },
-    });
-
-    // 5. Gera o QR Code (aponta para a validação pública)
-    const urlValidacao = `${this.apiUrl}/api/laudos/validar/${hashAutenticacao}`;
-    const qrCodeDataUrl = await QRCode.toDataURL(urlValidacao, {
-      width: 120,
-      margin: 1,
-    });
-
-    // 6. Monta o PDF
-    const nomeArquivo = `laudo_${ordem.protocolo}.pdf`;
-    const caminhoPdf = path.join(this.laudosDir, nomeArquivo);
-    await this.montarPdf(ordem, hashAutenticacao, qrCodeDataUrl, caminhoPdf);
-
-    // 7. Atualiza o laudo como LIBERADO
-    const laudoFinal = await this.prisma.laudo.update({
-      where: { id: laudo.id },
-      data: {
+        qrCodeUrl,
         status: StatusLaudo.LIBERADO,
-        urlPdf: `/laudos/${nomeArquivo}`,
         liberadoEm: new Date(),
       },
     });
 
-    this.logger.log(`Laudo gerado: ${ordem.protocolo}`);
+    // Marca os itens como LIBERADO
+    await this.prisma.itemOrdem.updateMany({
+      where: { ordemId, status: StatusItem.VALIDADO },
+      data: { status: StatusItem.LIBERADO },
+    });
 
-    return {
-      id: laudoFinal.id,
-      protocolo: ordem.protocolo,
-      hashAutenticacao,
-      urlPdf: laudoFinal.urlPdf,
-      urlValidacao,
-      status: laudoFinal.status,
-    };
+    this.logger.log(`Laudo gerado: OS ${ordem.protocolo} — hash ${hashAutenticacao}`);
+    return laudo;
   }
 
   /**
-   * Valida um laudo pelo hash (acesso público — para o QR Code).
-   * Não exige login. Retorna apenas dados de confirmação.
+   * Retorna todos os dados necessários para renderizar o laudo:
+   * laboratório, paciente, exames com resultados e valores de referência,
+   * e o biomédico que assinou.
    */
-  async validarPublico(hash: string) {
-    const laudo = await this.prisma.laudo.findFirst({
+  async dadosLaudo(ordemId: string, laboratorioId: string) {
+    const ordem = await this.prisma.ordemServico.findFirst({
+      where: { id: ordemId, laboratorioId },
+      include: {
+        laboratorio: {
+          select: {
+            nome: true, cnes: true, municipio: true, uf: true,
+            responsavelTecnico: true, crbm: true, logoUrl: true,
+          },
+        },
+        paciente: { select: { nome: true, dataNascimento: true, sexo: true } },
+        unidade: { select: { nome: true } },
+        laudo: true,
+        itens: {
+          include: {
+            exame: { include: { valoresRef: true } },
+            resultado: {
+              include: { biomedico: { select: { name: true } } },
+            },
+          },
+        },
+      },
+    });
+    if (!ordem) {
+      throw new NotFoundException('Ordem de serviço não encontrada');
+    }
+    return ordem;
+  }
+
+  /**
+   * Verificação PÚBLICA de autenticidade por hash.
+   * Retorna apenas dados mínimos (sem expor informação sensível do paciente).
+   */
+  async verificar(hash: string) {
+    const laudo = await this.prisma.laudo.findUnique({
       where: { hashAutenticacao: hash },
       include: {
         ordem: {
           select: {
             protocolo: true,
             createdAt: true,
+            laboratorio: { select: { nome: true, municipio: true, uf: true } },
             paciente: { select: { nome: true } },
-            laboratorio: { select: { nome: true, municipio: true } },
           },
         },
       },
     });
 
     if (!laudo) {
-      return { valido: false, mensagem: 'Laudo não encontrado ou inválido' };
+      return { valido: false, mensagem: 'Laudo não encontrado ou hash inválido' };
     }
 
-    // Retorna confirmação sem expor dados sensíveis completos
+    // Mascara o nome do paciente (LGPD): primeiro nome + iniciais
+    const nomeCompleto = laudo.ordem.paciente?.nome || '';
+    const partes = nomeCompleto.split(' ');
+    const nomeMascarado = partes.length > 1
+      ? `${partes[0]} ${partes.slice(1).map((p) => p[0] + '.').join(' ')}`
+      : partes[0];
+
     return {
       valido: true,
       protocolo: laudo.ordem.protocolo,
-      paciente: this.mascaraNome(laudo.ordem.paciente.nome),
-      laboratorio: laudo.ordem.laboratorio.nome,
-      municipio: laudo.ordem.laboratorio.municipio,
+      paciente: nomeMascarado,
+      laboratorio: laudo.ordem.laboratorio?.nome,
+      municipio: `${laudo.ordem.laboratorio?.municipio}/${laudo.ordem.laboratorio?.uf}`,
       emitidoEm: laudo.liberadoEm,
-      mensagem: 'Laudo autêntico e válido',
+      status: laudo.status,
     };
-  }
-
-  /**
-   * Retorna o caminho do PDF para download (exige autenticação no controller).
-   */
-  async obterCaminhoPdf(ordemId: string, laboratorioId: string): Promise<string> {
-    const laudo = await this.prisma.laudo.findFirst({
-      where: { ordemId, ordem: { laboratorioId } },
-      include: { ordem: { select: { protocolo: true } } },
-    });
-
-    if (!laudo || !laudo.urlPdf) {
-      throw new NotFoundException('Laudo não encontrado');
-    }
-
-    const nomeArquivo = `laudo_${laudo.ordem.protocolo}.pdf`;
-    const caminho = path.join(this.laudosDir, nomeArquivo);
-
-    if (!fs.existsSync(caminho)) {
-      throw new NotFoundException('Arquivo do laudo não encontrado');
-    }
-
-    return caminho;
-  }
-
-  // ─── Métodos privados ────────────────────────────────────────────
-
-  /**
-   * Monta o PDF do laudo usando pdfkit.
-   */
-  private async montarPdf(
-    ordem: any,
-    hash: string,
-    qrCodeDataUrl: string,
-    caminhoPdf: string,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: 'A4', margin: 50 });
-      const stream = fs.createWriteStream(caminhoPdf);
-      doc.pipe(stream);
-
-      const cor = '#0d9488';
-      const corTexto = '#1f2937';
-
-      // ─── Cabeçalho ───
-      doc.fontSize(18).fillColor(cor).text(ordem.laboratorio.nome, { align: 'center' });
-      doc
-        .fontSize(10)
-        .fillColor('#6b7280')
-        .text(
-          `${ordem.laboratorio.municipio}/${ordem.laboratorio.uf} — CNES: ${ordem.laboratorio.cnes}`,
-          { align: 'center' },
-        );
-      doc.moveDown(0.5);
-      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor(cor).stroke();
-      doc.moveDown(1);
-
-      // ─── Título ───
-      doc.fontSize(14).fillColor(corTexto).text('LAUDO LABORATORIAL', { align: 'center' });
-      doc.moveDown(1);
-
-      // ─── Dados do paciente e ordem ───
-      doc.fontSize(10).fillColor(corTexto);
-      const dataEmissao = new Date().toLocaleDateString('pt-BR');
-      doc.text(`Paciente: ${ordem.paciente.nome}`);
-      doc.text(`Protocolo: ${ordem.protocolo}`);
-      doc.text(`Unidade: ${ordem.unidade.nome}`);
-      doc.text(`Data de emissão: ${dataEmissao}`);
-      doc.moveDown(1);
-
-      // ─── Resultados de cada exame ───
-      for (const item of ordem.itens) {
-        if (!item.resultado) continue;
-
-        doc.moveDown(0.5);
-        doc.fontSize(12).fillColor(cor).text(item.exame.nome, { underline: false });
-        doc
-          .fontSize(8)
-          .fillColor('#6b7280')
-          .text(`Método: ${item.exame.metodo || 'N/A'} — Material: ${item.exame.material}`);
-        doc.moveDown(0.3);
-
-        // Tabela de valores
-        const valores = item.resultado.valores as Record<string, any>;
-        doc.fontSize(9).fillColor(corTexto);
-
-        for (const [campo, info] of Object.entries(valores)) {
-          const dados = info as any;
-          const valor = dados.valor ?? dados;
-          const ref = dados.referencia ? `  (Ref: ${dados.referencia})` : '';
-          const situacao =
-            dados.situacao && dados.situacao !== 'NORMAL'
-              ? `  [${dados.situacao}]`
-              : '';
-
-          const linha = `   ${campo}: ${valor} ${dados.unidade || ''}${ref}${situacao}`;
-          // Destaca em vermelho se fora da faixa
-          if (dados.situacao && dados.situacao !== 'NORMAL') {
-            doc.fillColor('#dc2626').text(linha);
-            doc.fillColor(corTexto);
-          } else {
-            doc.text(linha);
-          }
-        }
-
-        if (item.resultado.parecerTecnico) {
-          doc.moveDown(0.3);
-          doc.fontSize(8).fillColor('#6b7280').text(`Parecer: ${item.resultado.parecerTecnico}`);
-        }
-        doc.moveDown(0.5);
-      }
-
-      // ─── Rodapé com QR Code ───
-      doc.moveDown(2);
-      const yRodape = doc.y;
-      // Adiciona o QR Code (converte data URL para buffer)
-      const qrBuffer = Buffer.from(
-        qrCodeDataUrl.replace(/^data:image\/png;base64,/, ''),
-        'base64',
-      );
-      doc.image(qrBuffer, 50, yRodape, { width: 80 });
-      doc
-        .fontSize(8)
-        .fillColor('#6b7280')
-        .text('Escaneie o QR Code para validar a autenticidade deste laudo.', 140, yRodape + 10, {
-          width: 300,
-        });
-      doc.text(`Código de autenticação: ${hash}`, 140, yRodape + 30, { width: 300 });
-
-      doc.end();
-      stream.on('finish', () => resolve());
-      stream.on('error', reject);
-    });
-  }
-
-  /**
-   * Mascara o nome para exibição pública (privacidade).
-   * "Maria da Silva Santos" → "Maria d* S* S*"
-   */
-  private mascaraNome(nome: string): string {
-    const partes = nome.split(' ');
-    return partes
-      .map((p, i) => (i === 0 ? p : p.charAt(0) + '*'))
-      .join(' ');
   }
 }

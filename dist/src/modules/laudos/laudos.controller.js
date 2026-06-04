@@ -16,39 +16,61 @@ exports.LaudosController = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const laudos_service_1 = require("./laudos.service");
+const laudo_pdf_service_1 = require("./laudo-pdf.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../../common/guards/roles.guard");
 const roles_decorator_1 = require("../../common/decorators/roles.decorator");
 const current_user_decorator_1 = require("../../common/decorators/current-user.decorator");
 let LaudosController = class LaudosController {
     laudosService;
-    constructor(laudosService) {
+    laudoPdfService;
+    constructor(laudosService, laudoPdfService) {
         this.laudosService = laudosService;
+        this.laudoPdfService = laudoPdfService;
     }
-    validarPublico(hash) {
-        return this.laudosService.validarPublico(hash);
+    listar(laboratorioId) {
+        return this.laudosService.listar(laboratorioId);
+    }
+    dados(ordemId, laboratorioId) {
+        return this.laudosService.dadosLaudo(ordemId, laboratorioId);
     }
     gerar(ordemId, laboratorioId) {
-        return this.laudosService.gerarLaudo(ordemId, laboratorioId);
+        return this.laudosService.gerar(ordemId, laboratorioId);
     }
-    async download(ordemId, laboratorioId, res) {
-        const caminho = await this.laudosService.obterCaminhoPdf(ordemId, laboratorioId);
-        return res.download(caminho);
+    async pdf(ordemId, laboratorioId, res) {
+        const ordem = await this.laudosService.dadosLaudo(ordemId, laboratorioId);
+        if (!ordem) {
+            throw new common_1.NotFoundException('Ordem de serviço não encontrada');
+        }
+        const pdf = await this.laudoPdfService.gerarPdf(ordem);
+        const nomeArquivo = `laudo-${ordem.protocolo || ordemId}.pdf`;
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `inline; filename="${nomeArquivo}"`,
+            'Content-Length': pdf.length,
+        });
+        res.end(pdf);
     }
 };
 exports.LaudosController = LaudosController;
 __decorate([
-    (0, common_1.Get)('validar/:hash'),
-    __param(0, (0, common_1.Param)('hash')),
+    (0, common_1.Get)(),
+    __param(0, (0, current_user_decorator_1.CurrentUser)('laboratorioId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
-], LaudosController.prototype, "validarPublico", null);
+], LaudosController.prototype, "listar", null);
 __decorate([
-    (0, common_1.Post)('gerar/:ordemId'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, common_1.Get)('ordem/:ordemId'),
+    __param(0, (0, common_1.Param)('ordemId')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)('laboratorioId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], LaudosController.prototype, "dados", null);
+__decorate([
+    (0, common_1.Post)('ordem/:ordemId/gerar'),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.BIOMEDICO),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Param)('ordemId')),
     __param(1, (0, current_user_decorator_1.CurrentUser)('laboratorioId')),
     __metadata("design:type", Function),
@@ -56,17 +78,18 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], LaudosController.prototype, "gerar", null);
 __decorate([
-    (0, common_1.Get)('download/:ordemId'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, common_1.Get)('ordem/:ordemId/pdf'),
     __param(0, (0, common_1.Param)('ordemId')),
     __param(1, (0, current_user_decorator_1.CurrentUser)('laboratorioId')),
     __param(2, (0, common_1.Res)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", Promise)
-], LaudosController.prototype, "download", null);
+], LaudosController.prototype, "pdf", null);
 exports.LaudosController = LaudosController = __decorate([
     (0, common_1.Controller)('laudos'),
-    __metadata("design:paramtypes", [laudos_service_1.LaudosService])
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    __metadata("design:paramtypes", [laudos_service_1.LaudosService,
+        laudo_pdf_service_1.LaudoPdfService])
 ], LaudosController);
 //# sourceMappingURL=laudos.controller.js.map

@@ -4,13 +4,6 @@ export declare class ResultadosController {
     private readonly resultadosService;
     constructor(resultadosService: ResultadosService);
     listarPendentes(laboratorioId: string): Promise<({
-        ordem: {
-            paciente: {
-                nome: string;
-            };
-            protocolo: string;
-            prioridade: import("@prisma/client").$Enums.Prioridade;
-        };
         exame: {
             nome: string;
             codigo: string;
@@ -19,24 +12,24 @@ export declare class ResultadosController {
         resultado: {
             status: import("@prisma/client").$Enums.StatusResult;
         } | null;
-    } & {
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        ordemId: string;
-        exameId: string;
-        status: import("@prisma/client").$Enums.StatusItem;
-        coletadoEm: Date | null;
-        prazoEntrega: Date | null;
-    })[]>;
-    listarAguardandoValidacao(laboratorioId: string): Promise<({
         ordem: {
             paciente: {
                 nome: string;
             };
-            protocolo: string;
             prioridade: import("@prisma/client").$Enums.Prioridade;
+            protocolo: string;
         };
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        exameId: string;
+        status: import("@prisma/client").$Enums.StatusItem;
+        coletadoEm: Date | null;
+        prazoEntrega: Date | null;
+        ordemId: string;
+    })[]>;
+    listarAguardandoValidacao(laboratorioId: string): Promise<({
         exame: {
             nome: string;
             codigo: string;
@@ -46,15 +39,22 @@ export declare class ResultadosController {
             valores: import("@prisma/client/runtime/client").JsonValue;
             status: import("@prisma/client").$Enums.StatusResult;
         } | null;
+        ordem: {
+            paciente: {
+                nome: string;
+            };
+            prioridade: import("@prisma/client").$Enums.Prioridade;
+            protocolo: string;
+        };
     } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        ordemId: string;
         exameId: string;
         status: import("@prisma/client").$Enums.StatusItem;
         coletadoEm: Date | null;
         prazoEntrega: Date | null;
+        ordemId: string;
     })[]>;
     digitar(itemOrdemId: string, dto: DigitarResultadoDto, laboratorioId: string, usuarioId: string): Promise<{
         alertaCritico: string | null;
@@ -63,8 +63,8 @@ export declare class ResultadosController {
         createdAt: Date;
         updatedAt: Date;
         valores: import("@prisma/client/runtime/client").JsonValue;
-        observacao: string | null;
         status: import("@prisma/client").$Enums.StatusResult;
+        observacao: string | null;
         itemOrdemId: string;
         biomedicoId: string;
         parecerTecnico: string | null;
@@ -77,8 +77,8 @@ export declare class ResultadosController {
         createdAt: Date;
         updatedAt: Date;
         valores: import("@prisma/client/runtime/client").JsonValue;
-        observacao: string | null;
         status: import("@prisma/client").$Enums.StatusResult;
+        observacao: string | null;
         itemOrdemId: string;
         biomedicoId: string;
         parecerTecnico: string | null;
@@ -90,11 +90,11 @@ export declare class ResultadosController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            ordemId: string;
             exameId: string;
             status: import("@prisma/client").$Enums.StatusItem;
             coletadoEm: Date | null;
             prazoEntrega: Date | null;
+            ordemId: string;
         };
     } & {
         critico: boolean;
@@ -102,8 +102,8 @@ export declare class ResultadosController {
         createdAt: Date;
         updatedAt: Date;
         valores: import("@prisma/client/runtime/client").JsonValue;
-        observacao: string | null;
         status: import("@prisma/client").$Enums.StatusResult;
+        observacao: string | null;
         itemOrdemId: string;
         biomedicoId: string;
         parecerTecnico: string | null;

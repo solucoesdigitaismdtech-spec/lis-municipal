@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const ordens_service_1 = require("./ordens.service");
 const create_ordem_dto_1 = require("./dto/create-ordem.dto");
+const adicionar_item_dto_1 = require("./dto/adicionar-item.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../../common/guards/roles.guard");
 const roles_decorator_1 = require("../../common/decorators/roles.decorator");
@@ -36,17 +37,20 @@ let OrdensController = class OrdensController {
             limite: limite ? parseInt(limite) : 20,
         });
     }
-    agendaDoDia(laboratorioId, data) {
-        return this.ordensService.agendaDoDia(laboratorioId, data);
-    }
     findOne(id, laboratorioId) {
         return this.ordensService.findOne(id, laboratorioId);
     }
     registrarColeta(ordemId, itemId, laboratorioId) {
         return this.ordensService.registrarColeta(ordemId, itemId, laboratorioId);
     }
-    registrarColetaCompleta(ordemId, laboratorioId) {
-        return this.ordensService.registrarColetaCompleta(ordemId, laboratorioId);
+    coletarTudo(id, laboratorioId) {
+        return this.ordensService.coletarTudo(id, laboratorioId);
+    }
+    adicionarItem(ordemId, dto, laboratorioId) {
+        return this.ordensService.adicionarItem(ordemId, dto.exameId, laboratorioId);
+    }
+    removerItem(ordemId, itemId, laboratorioId) {
+        return this.ordensService.removerItem(ordemId, itemId, laboratorioId);
     }
     cancelar(id, laboratorioId) {
         return this.ordensService.cancelar(id, laboratorioId);
@@ -75,14 +79,6 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], OrdensController.prototype, "findAll", null);
 __decorate([
-    (0, common_1.Get)('agenda'),
-    __param(0, (0, current_user_decorator_1.CurrentUser)('laboratorioId')),
-    __param(1, (0, common_1.Query)('data')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
-    __metadata("design:returntype", void 0)
-], OrdensController.prototype, "agendaDoDia", null);
-__decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, current_user_decorator_1.CurrentUser)('laboratorioId')),
@@ -108,7 +104,28 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
-], OrdensController.prototype, "registrarColetaCompleta", null);
+], OrdensController.prototype, "coletarTudo", null);
+__decorate([
+    (0, common_1.Post)(':id/itens'),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.TECNICO),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)('laboratorioId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, adicionar_item_dto_1.AdicionarItemDto, String]),
+    __metadata("design:returntype", void 0)
+], OrdensController.prototype, "adicionarItem", null);
+__decorate([
+    (0, common_1.Delete)(':id/itens/:itemId'),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.TECNICO),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('itemId')),
+    __param(2, (0, current_user_decorator_1.CurrentUser)('laboratorioId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], OrdensController.prototype, "removerItem", null);
 __decorate([
     (0, common_1.Patch)(':id/cancelar'),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN),

@@ -87,6 +87,33 @@ export class ResultadosService {
   }
 
   /**
+   * NOVO — Detalhe de uma OS para digitação/validação.
+   * Retorna a ordem com todos os itens, exames, valores de referência
+   * e o resultado atual de cada item. Apenas leitura (não altera nada).
+   */
+  async detalheOrdem(ordemId: string, laboratorioId: string) {
+    const ordem = await this.prisma.ordemServico.findFirst({
+      where: { id: ordemId, laboratorioId },
+      include: {
+        paciente: { select: { id: true, nome: true, dataNascimento: true, sexo: true } },
+        unidade: { select: { nome: true } },
+        itens: {
+          include: {
+            exame: { include: { valoresRef: true } },
+            resultado: true,
+          },
+        },
+      },
+    });
+
+    if (!ordem) {
+      throw new NotFoundException('Ordem de serviço não encontrada');
+    }
+
+    return ordem;
+  }
+
+  /**
    * Digita ou atualiza o resultado de um item (exame).
    * Compara automaticamente com os valores de referência.
    */

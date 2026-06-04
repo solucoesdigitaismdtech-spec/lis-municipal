@@ -7,22 +7,25 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
-const resultados_module_1 = require("./modules/resultados/resultados.module");
-const laudos_module_1 = require("./modules/laudos/laudos.module");
-const exames_module_1 = require("./modules/exames/exames.module");
-const ordens_module_1 = require("./modules/ordens/ordens.module");
-const esus_module_1 = require("./modules/esus/esus.module");
-const pacientes_module_1 = require("./modules/pacientes/pacientes.module");
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const core_1 = require("@nestjs/core");
 const common_2 = require("@nestjs/common");
+const serve_static_1 = require("@nestjs/serve-static");
+const path_1 = require("path");
 const prisma_module_1 = require("./prisma/prisma.module");
 const crypto_module_1 = require("./common/crypto/crypto.module");
 const auth_module_1 = require("./modules/auth/auth.module");
 const users_module_1 = require("./modules/users/users.module");
 const laboratorios_module_1 = require("./modules/laboratorios/laboratorios.module");
 const unidades_module_1 = require("./modules/unidades/unidades.module");
+const pacientes_module_1 = require("./modules/pacientes/pacientes.module");
+const esus_module_1 = require("./modules/esus/esus.module");
+const exames_module_1 = require("./modules/exames/exames.module");
+const ordens_module_1 = require("./modules/ordens/ordens.module");
+const resultados_module_1 = require("./modules/resultados/resultados.module");
+const laudos_module_1 = require("./modules/laudos/laudos.module");
+const portal_module_1 = require("./modules/portal/portal.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -32,6 +35,11 @@ exports.AppModule = AppModule = __decorate([
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
                 envFilePath: '.env',
+            }),
+            serve_static_1.ServeStaticModule.forRoot({
+                rootPath: (0, path_1.join)(__dirname, '..', '..', 'public'),
+                serveRoot: '/portal',
+                exclude: ['/api/(.*)'],
             }),
             prisma_module_1.PrismaModule,
             crypto_module_1.CryptoModule,
@@ -45,6 +53,7 @@ exports.AppModule = AppModule = __decorate([
             ordens_module_1.OrdensModule,
             resultados_module_1.ResultadosModule,
             laudos_module_1.LaudosModule,
+            portal_module_1.PortalModule,
         ],
         providers: [
             {

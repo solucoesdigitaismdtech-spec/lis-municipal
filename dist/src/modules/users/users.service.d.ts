@@ -21,8 +21,8 @@ export declare class UsersService {
         name: string;
         laboratorioId: string;
         email: string;
-        passwordHash: string;
         role: import("@prisma/client").$Enums.UserRole;
+        passwordHash: string;
         active: boolean;
         twoFactorSecretEncrypted: string | null;
         twoFactorEnabled: boolean;

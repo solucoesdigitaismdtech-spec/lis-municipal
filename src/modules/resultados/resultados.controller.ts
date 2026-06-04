@@ -52,6 +52,20 @@ export class ResultadosController {
   }
 
   /**
+   * GET /resultados/ordem/:ordemId
+   * Detalhe de uma OS para digitar/validar (com valores de referência).
+   * Liberado para TECNICO, BIOMEDICO e ADMIN.
+   */
+  @Get('ordem/:ordemId')
+  @Roles(UserRole.ADMIN, UserRole.TECNICO, UserRole.BIOMEDICO)
+  detalheOrdem(
+    @Param('ordemId') ordemId: string,
+    @CurrentUser('laboratorioId') laboratorioId: string,
+  ) {
+    return this.resultadosService.detalheOrdem(ordemId, laboratorioId);
+  }
+
+  /**
    * POST /resultados/:itemOrdemId/digitar
    * TECNICO digita o resultado (a partir do mapa de trabalho preenchido).
    */
