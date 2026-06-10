@@ -1,46 +1,27 @@
-# ───────────────────────────────────────────────
-# .gitignore — MD Lab (monorepo: api + mdlab-frontend)
-# ───────────────────────────────────────────────
-
-# Dependências (geradas pelo npm install)
-node_modules/
+﻿node_modules/
 **/node_modules/
-
-# Build / compilado (gerado automaticamente)
 dist/
 **/dist/
 .next/
 **/.next/
 build/
 out/
-
-# Variáveis de ambiente e segredos (NUNCA versionar!)
 .env
 .env.*
 !.env.example
 **/.env
 **/.env.*
-
-# Logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Arquivos gerados em runtime (PDFs, mapas)
 laudos/*.pdf
 mapas-trabalho/*.pdf
-
-# Cache e temporários
+**/laudos/*.pdf
+**/mapas-trabalho/*.pdf
 *.tsbuildinfo
 .cache/
 .DS_Store
 Thumbs.db
-
-# Editores
 .vscode/
+**/.vscode/
 .idea/
 *.swp
-
-# Prisma (mantém schema e migrations, ignora gerado)
 **/generated/

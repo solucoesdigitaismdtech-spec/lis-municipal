@@ -1,3 +1,4 @@
+import { ComprovanteModule } from './modules/ordens/comprovante.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_PIPE } from '@nestjs/core';
@@ -57,6 +58,7 @@ import { PortalModule } from './modules/portal/portal.module';
     OrdensModule,
     ResultadosModule,
     LaudosModule,
+    ComprovanteModule,
 
     // Portal público do paciente
     PortalModule,

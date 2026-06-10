@@ -3,3 +3,4 @@ node_modules
 .env
 
 /generated/prisma
+Add-Content .gitignore "`n# PDFs gerados em qualquer subpasta`n**/laudos/*.pdf`n**/mapas-trabalho/*.pdf"

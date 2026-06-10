@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Plus, X, Loader2, CalendarDays, Search, Check, CheckCheck, FlaskConical, User,
-  Trash2, AlertCircle, Lock,
+  Trash2, AlertCircle, Lock, QrCode,
 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { ordensApi, pacientesApi, unidadesApi, examesApi } from '@/lib/api';
@@ -134,11 +134,16 @@ export default function AgendaPage() {
                       <td style={td}>{o._count?.itens ?? o.itens?.length ?? '—'}</td>
                       <td style={td}><span style={{ fontSize: 11.5, fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: s.cor, background: s.bg, whiteSpace: 'nowrap' }}>{s.label}</span></td>
                       <td style={td}>
-                        {coletavel ? (
-                          <BotaoColeta ordemId={o.id} onColetado={() => carregar()} />
-                        ) : (
-                          <button onClick={() => setDetalhe(o.id)} style={btnVer}>Ver</button>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {coletavel ? (
+                            <BotaoColeta ordemId={o.id} onColetado={() => carregar()} />
+                          ) : (
+                            <button onClick={() => setDetalhe(o.id)} style={btnVer}>Ver</button>
+                          )}
+                          <button onClick={() => ordensApi.comprovante(o.id)} title="Comprovante com QR" style={btnComprovante}>
+                            <QrCode size={15} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -210,7 +215,12 @@ function ModalNovaOS({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () 
     if (!unidadeId) { setErro('Selecione a unidade.'); return; }
     setSalvando(true);
     try {
-      await ordensApi.criar({ pacienteId: pacSel.id, unidadeId, exameIds: exSel, medicoSolicitante: medico || undefined });
+      const nova = await ordensApi.criar({ pacienteId: pacSel.id, unidadeId, exameIds: exSel, medicoSolicitante: medico || undefined });
+      // Abre o comprovante com QR automaticamente após criar
+      const novaId = nova?.id || nova?.dados?.id;
+      if (novaId) {
+        try { await ordensApi.comprovante(novaId); } catch {}
+      }
       onSalvo();
     } catch (err: any) {
       setErro(err.message || 'Erro ao criar ordem.');
@@ -478,6 +488,7 @@ const btnRemover: React.CSSProperties = { display: 'flex', alignItems: 'center',
 const btnAddMini: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, background: '#f0fdfa', color: '#0d9488', border: '1px solid #99f6e4', borderRadius: 9, padding: '6px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit, sans-serif' };
 const itemAddExame: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', background: '#fff', border: '1px solid #ccfbf1', borderRadius: 8, cursor: 'pointer', fontFamily: 'Outfit, sans-serif' };
 const btnVer: React.CSSProperties = { background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 9, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit, sans-serif' };
+const btnComprovante: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#fff', color: '#0d9488', borderWidth: 1.5, borderStyle: 'solid', borderColor: '#99f6e4', borderRadius: 9, width: 32, height: 32, cursor: 'pointer' };
 const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(10,31,30,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 16 };
 const modal: React.CSSProperties = { background: '#fff', borderRadius: 18, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' };
 const modalHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 20px', borderBottom: '1px solid #f1f5f9' };

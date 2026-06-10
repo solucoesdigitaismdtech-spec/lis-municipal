@@ -184,4 +184,51 @@ export class LaudosService {
       status: laudo.status,
     };
   }
+  /**
+   * Busca os dados completos do laudo PELO HASH (acesso público).
+   * Usado pelo Portal do Paciente para baixar o PDF sem login.
+   * Só retorna se o laudo existir e estiver liberado.
+   */
+  async dadosLaudoPorHash(hash: string) {
+    const laudo = await this.prisma.laudo.findUnique({
+      where: { hashAutenticacao: hash },
+      select: { id: true, status: true, ordemId: true },
+    });
+
+    if (!laudo) {
+      throw new NotFoundException('Laudo não encontrado');
+    }
+    if (laudo.status !== 'LIBERADO') {
+      throw new NotFoundException('Laudo ainda não está disponível');
+    }
+
+    // Reaproveita a mesma estrutura de dadosLaudo, mas busca pela ordem do laudo
+    const ordem = await this.prisma.ordemServico.findUnique({
+      where: { id: laudo.ordemId },
+      include: {
+        laboratorio: {
+          select: {
+            nome: true, cnes: true, municipio: true, uf: true,
+            responsavelTecnico: true, crbm: true, logoUrl: true,
+          },
+        },
+        paciente: { select: { nome: true, dataNascimento: true, sexo: true } },
+        unidade: { select: { nome: true } },
+        laudo: true,
+        itens: {
+          include: {
+            exame: { include: { valoresRef: true } },
+            resultado: {
+              include: { biomedico: { select: { name: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    if (!ordem) {
+      throw new NotFoundException('Ordem de serviço não encontrada');
+    }
+    return ordem;
+  }
 }

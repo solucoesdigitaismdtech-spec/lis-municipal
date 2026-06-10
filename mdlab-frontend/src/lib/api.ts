@@ -238,6 +238,8 @@ Object.assign(ordensApi, {
     apiRequest(`/ordens/${ordemId}/itens`, { method: 'POST', body: { exameId } }),
   removerItem: (ordemId: string, itemId: string) =>
     apiRequest(`/ordens/${ordemId}/itens/${itemId}`, { method: 'DELETE' }),
+  // Gera/abre o PDF do comprovante de atendimento (com QR do portal)
+  comprovante: (ordemId: string) => baixarPdfComToken(`/api/ordens/${ordemId}/comprovante`, `comprovante-${ordemId}.pdf`),
 });
 
 // ─── API de Laudos ──────────────────────────────────────────────
@@ -247,4 +249,43 @@ export const laudosApi = {
   gerar: (ordemId: string) => apiRequest(`/laudos/ordem/${ordemId}/gerar`, { method: 'POST' }),
   // Verificação pública (sem token) — usa fetch direto
   verificar: (hash: string) => apiRequest(`/publico/laudos/verificar/${hash}`, { auth: false }),
+};
+
+// ─── API do Mapa de Trabalho (gera PDF no backend) ──────────────
+// As rotas devolvem um arquivo PDF, então baixamos via fetch com token.
+async function baixarPdfComToken(url: string, nomeArquivo: string, opcoes?: { method?: string; body?: any }) {
+  const token = tokenStorage.getAccess();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const init: RequestInit = { method: opcoes?.method || 'GET', headers };
+  if (opcoes?.body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(opcoes.body);
+  }
+  const resp = await fetch(url, init);
+  if (!resp.ok) {
+    // tenta ler mensagem de erro do backend
+    let msg = 'Falha ao gerar o PDF.';
+    try { const j = await resp.json(); msg = j.message || msg; } catch {}
+    throw new Error(msg);
+  }
+  const blob = await resp.blob();
+  const objUrl = URL.createObjectURL(blob);
+  window.open(objUrl, '_blank');
+  setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+}
+
+export const mapaTrabalhoApi = {
+  porOrdem: (ordemId: string) => baixarPdfComToken(`/api/mapa-trabalho/ordem/${ordemId}`, `mapa-${ordemId}.pdf`),
+  doDia: (data?: string) => baixarPdfComToken(`/api/mapa-trabalho/dia${data ? `?data=${data}` : ''}`, `mapa-dia.pdf`),
+  lote: (ordemIds: string[]) => baixarPdfComToken('/api/mapa-trabalho/lote', 'mapa-lote.pdf', { method: 'POST', body: { ordemIds } }),
+};
+
+// ─── API do Portal do Paciente (público, sem login) ─────────────
+export const portalApi = {
+  consultar: (protocolo: string, nascimento: string) =>
+    apiRequest(`/portal/consultar?protocolo=${encodeURIComponent(protocolo)}&nascimento=${nascimento}`, { auth: false }),
+  // Baixa o PDF do laudo pelo hash (rota pública, sem token)
+  baixarLaudo: (hash: string) => {
+    window.open(`/api/publico/laudos/${hash}/pdf`, '_blank');
+  },
 };

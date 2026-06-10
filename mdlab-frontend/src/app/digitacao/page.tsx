@@ -6,7 +6,7 @@ import {
   FlaskConical, Check, AlertCircle, AlertTriangle, ClipboardPen, Printer,
 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
-import { resultadosApi } from '@/lib/api';
+import { resultadosApi, mapaTrabalhoApi } from '@/lib/api';
 
 const PRIO: Record<string, { label: string; cor: string; bg: string }> = {
   NORMAL: { label: 'Normal', cor: '#64748b', bg: '#f1f5f9' },
@@ -67,8 +67,24 @@ export default function DigitacaoPage() {
   const [fila, setFila] = useState<any[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [ordemSel, setOrdemSel] = useState<string | null>(null);
-  const [mapaOrdens, setMapaOrdens] = useState<any[] | null>(null); // OS detalhadas p/ o mapa
-  const [gerandoMapa, setGerandoMapa] = useState(false);
+  const [mapaErro, setMapaErro] = useState('');
+  const [gerandoMapa, setGerandoMapa] = useState<string>(''); // '' | 'lote' | ordemId
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
+
+  function toggleSelecao(ordemId: string) {
+    setSelecionadas((s) => {
+      const nova = new Set(s);
+      nova.has(ordemId) ? nova.delete(ordemId) : nova.add(ordemId);
+      return nova;
+    });
+  }
+
+  function selecionarTodas() {
+    setSelecionadas((s) => {
+      if (s.size === fila.length) return new Set(); // desmarca todas
+      return new Set(fila.map((o) => o.ordemId)); // marca todas
+    });
+  }
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -85,19 +101,28 @@ export default function DigitacaoPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // Busca o detalhe completo (exames + valores de referência) de uma ou mais OS
-  // e abre a view do mapa de trabalho.
-  async function gerarMapa(ordemIds: string[]) {
-    if (ordemIds.length === 0) return;
-    setGerandoMapa(true);
+  // Gera o PDF do mapa de trabalho no backend e abre numa nova aba.
+  async function gerarMapaOrdem(ordemId: string) {
+    setMapaErro(''); setGerandoMapa(ordemId);
     try {
-      const detalhes = await Promise.all(
-        ordemIds.map((id) => resultadosApi.detalheOrdem(id).then((r: any) => r?.ordem ?? r?.dados ?? r).catch(() => null)),
-      );
-      const validas = detalhes.filter(Boolean);
-      if (validas.length > 0) setMapaOrdens(validas);
+      await mapaTrabalhoApi.porOrdem(ordemId);
+    } catch (e: any) {
+      setMapaErro(e.message || 'Erro ao gerar o mapa.');
     } finally {
-      setGerandoMapa(false);
+      setGerandoMapa('');
+    }
+  }
+
+  async function gerarMapaLote() {
+    if (selecionadas.size === 0) return;
+    setMapaErro(''); setGerandoMapa('lote');
+    try {
+      await mapaTrabalhoApi.lote(Array.from(selecionadas));
+      setSelecionadas(new Set()); // limpa seleção após gerar
+    } catch (e: any) {
+      setMapaErro(e.message || 'Erro ao gerar os mapas selecionados.');
+    } finally {
+      setGerandoMapa('');
     }
   }
 
@@ -110,9 +135,14 @@ export default function DigitacaoPage() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {fila.length > 0 && (
-            <button onClick={() => gerarMapa(fila.map((o) => o.ordemId))} disabled={gerandoMapa} style={btnMapaDia}>
-              {gerandoMapa ? <Loader2 size={16} className="spin" /> : <Printer size={16} />} Imprimir mapa do dia
-            </button>
+            <>
+              <button onClick={selecionarTodas} style={btnSelTodas}>
+                {selecionadas.size === fila.length ? 'Desmarcar todas' : 'Selecionar todas'}
+              </button>
+              <button onClick={gerarMapaLote} disabled={selecionadas.size === 0 || gerandoMapa === 'lote'} style={{ ...btnMapaDia, opacity: selecionadas.size === 0 ? 0.5 : 1, cursor: selecionadas.size === 0 ? 'default' : 'pointer' }}>
+                {gerandoMapa === 'lote' ? <Loader2 size={16} className="spin" /> : <Printer size={16} />} Gerar mapas {selecionadas.size > 0 ? `(${selecionadas.size})` : ''}
+              </button>
+            </>
           )}
           <span style={{ fontSize: 13, color: '#94a3b8' }}>{fila.length} {fila.length === 1 ? 'ordem na fila' : 'ordens na fila'}</span>
         </div>
@@ -134,6 +164,11 @@ export default function DigitacaoPage() {
               const pendentes = os.exames?.filter((e: any) => e.status !== 'RESULTADO_DIGITADO').length ?? os.totalExames;
               return (
                 <div key={os.ordemId || idx} onClick={() => setOrdemSel(os.ordemId)} style={linhaFila} className="linha-fila">
+                  <div onClick={(e) => { e.stopPropagation(); toggleSelecao(os.ordemId); }} style={{ display: 'flex', alignItems: 'center', paddingRight: 14, cursor: 'pointer' }} title="Selecionar para o mapa em lote">
+                    <div style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderStyle: 'solid', borderColor: selecionadas.has(os.ordemId) ? '#0d9488' : '#cbd5e1', background: selecionadas.has(os.ordemId) ? '#0d9488' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}>
+                      {selecionadas.has(os.ordemId) && <Check size={14} color="#fff" />}
+                    </div>
+                  </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                       <span style={{ fontFamily: 'monospace', fontSize: 13, color: '#0d9488', fontWeight: 600 }}>{os.protocolo}</span>
@@ -146,8 +181,8 @@ export default function DigitacaoPage() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span style={{ fontSize: 12.5, fontWeight: 600, color: '#b45309', background: '#fffbeb', padding: '5px 11px', borderRadius: 20 }}>{pendentes} a digitar</span>
-                    <button onClick={(e) => { e.stopPropagation(); gerarMapa([os.ordemId]); }} title="Imprimir mapa de trabalho" style={btnMapaOS}>
-                      <ClipboardPen size={15} /> Mapa
+                    <button onClick={(e) => { e.stopPropagation(); gerarMapaOrdem(os.ordemId); }} disabled={gerandoMapa === os.ordemId} title="Imprimir mapa de trabalho" style={btnMapaOS}>
+                      {gerandoMapa === os.ordemId ? <Loader2 size={15} className="spin" /> : <ClipboardPen size={15} />} Mapa
                     </button>
                     <ChevronRight size={18} color="#cbd5e1" />
                   </div>
@@ -159,7 +194,11 @@ export default function DigitacaoPage() {
       </div>
 
       {ordemSel && <PainelDigitacao ordemId={ordemSel} onFechar={() => setOrdemSel(null)} onSalvouTudo={() => { setOrdemSel(null); carregar(); }} />}
-      {mapaOrdens && <MapaTrabalho ordens={mapaOrdens} onFechar={() => setMapaOrdens(null)} />}
+      {mapaErro && (
+        <div onClick={() => setMapaErro('')} style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '12px 18px', borderRadius: 12, fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 8, zIndex: 400, cursor: 'pointer', boxShadow: '0 8px 24px rgba(0,0,0,.12)' }}>
+          <AlertCircle size={16} /> {mapaErro} <span style={{ color: '#94a3b8', marginLeft: 8 }}>✕</span>
+        </div>
+      )}
 
       <style>{`.spin{animation:girar 1s linear infinite}@keyframes girar{to{transform:rotate(360deg)}}.linha-fila:hover{background:#f8fafc}`}</style>
     </AppLayout>
@@ -360,114 +399,9 @@ function CardExame({ item, paciente, onSalvo }: { item: any; paciente: any; onSa
 }
 
 // ─── Mapa de Trabalho imprimível ───
-function MapaTrabalho({ ordens, onFechar }: { ordens: any[]; onFechar: () => void }) {
-  const dataBR = (d: string) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
-  const idade = (d: string) => d ? Math.floor((Date.now() - new Date(d).getTime()) / (365.25 * 24 * 3600 * 1000)) : '';
-  const hojeStr = new Date().toLocaleDateString('pt-BR');
-
-  function imprimir() { window.print(); }
-
-  return (
-    <div style={overlayMapa} onClick={onFechar}>
-      {/* Barra de ações (não imprime) */}
-      <div style={barraMapa} className="nao-imprime" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onFechar} style={btnBarraSecMapa}><X size={16} /> Fechar</button>
-        <span style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}>
-          Mapa de Trabalho — {ordens.length === 1 ? '1 paciente' : `${ordens.length} pacientes`}
-        </span>
-        <button onClick={imprimir} style={btnBarraMapa}><Printer size={16} /> Imprimir</button>
-      </div>
-
-      {/* Folhas — uma por OS/paciente */}
-      <div style={folhaWrapMapa} onClick={(e) => e.stopPropagation()}>
-        <div id="mapa-print">
-          {ordens.map((ordem, i) => {
-            const itens = ordem.itens || [];
-            const pac = ordem.paciente || {};
-            return (
-              <div key={ordem.id || i} style={{ ...folhaMapa, pageBreakAfter: i < ordens.length - 1 ? 'always' : 'auto' }} className="folha-mapa">
-                {/* Cabeçalho */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #0a1f1e', paddingBottom: 12, marginBottom: 16 }}>
-                  <div>
-                    <div style={{ fontSize: 17, fontWeight: 800, fontFamily: 'Sora, sans-serif', color: '#0a1f1e' }}>Mapa de Trabalho</div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Documento interno — anotação de resultados</div>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: 12, color: '#64748b' }}>
-                    <div style={{ fontFamily: 'monospace', fontSize: 14, color: '#0a1f1e', fontWeight: 700 }}>{ordem.protocolo}</div>
-                    <div>Emissão: {hojeStr}</div>
-                  </div>
-                </div>
-
-                {/* Dados do paciente */}
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8, background: '#f8fafc', padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 12.5 }}>
-                  <div><strong>Paciente:</strong> {pac.nome}</div>
-                  <div><strong>Idade:</strong> {idade(pac.dataNascimento)} anos</div>
-                  <div><strong>Sexo:</strong> {pac.sexo === 'FEMININO' ? 'F' : pac.sexo === 'MASCULINO' ? 'M' : '-'}</div>
-                </div>
-
-                {/* Exames com espaço para anotar + valores de referência */}
-                {itens.map((item: any) => {
-                  const valoresRef = item.exame?.valoresRef || [];
-                  return (
-                    <div key={item.id} style={{ marginBottom: 16, pageBreakInside: 'avoid' }}>
-                      <div style={{ background: '#0a1f1e', color: '#fff', padding: '6px 12px', borderRadius: '6px 6px 0 0', fontSize: 13, fontWeight: 700 }}>
-                        {item.exame?.nome}{item.exame?.material ? ` · ${item.exame.material}` : ''}
-                      </div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #cbd5e1', borderTop: 'none' }}>
-                        <thead><tr style={{ background: '#f1f5f9' }}>
-                          <th style={thMapa}>Parâmetro</th>
-                          <th style={{ ...thMapa, width: '30%' }}>Resultado (anotar)</th>
-                          <th style={thMapa}>Valores de referência</th>
-                        </tr></thead>
-                        <tbody>
-                          {valoresRef.length === 0 ? (
-                            <tr>
-                              <td style={tdMapa}>{item.exame?.nome}</td>
-                              <td style={{ ...tdMapa, height: 32 }}></td>
-                              <td style={tdMapa}>—</td>
-                            </tr>
-                          ) : valoresRef.map((ref: any) => (
-                            <tr key={ref.id}>
-                              <td style={tdMapa}>{ref.campo}</td>
-                              <td style={{ ...tdMapa, height: 32, background: '#fffef5' }}></td>
-                              <td style={{ ...tdMapa, color: '#64748b' }}>
-                                {ref.textoRef ? ref.textoRef : `${ref.minimo ?? '—'} a ${ref.maximo ?? '—'}`} {ref.unidade || ''}
-                                {ref.sexo ? ` (${ref.sexo === 'FEMININO' ? 'F' : 'M'})` : ''}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })}
-
-                {/* Rodapé para assinatura do responsável */}
-                <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#64748b' }}>
-                  <div style={{ borderTop: '1px solid #94a3b8', paddingTop: 4, width: '45%', textAlign: 'center' }}>Responsável pela análise</div>
-                  <div style={{ borderTop: '1px solid #94a3b8', paddingTop: 4, width: '30%', textAlign: 'center' }}>Data / Hora</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <style>{`
-        @media print {
-          .nao-imprime { display: none !important; }
-          body * { visibility: hidden; }
-          #mapa-print, #mapa-print * { visibility: visible; }
-          #mapa-print { position: absolute; left: 0; top: 0; width: 100%; }
-          .folha-mapa { box-shadow: none !important; margin: 0 !important; padding: 12mm !important; }
-        }
-      `}</style>
-    </div>
-  );
-}
-
 const cab: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap', gap: 12 };
 const btnMapaDia: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, background: '#0a1f1e', color: '#fff', border: 'none', borderRadius: 11, padding: '10px 16px', fontSize: 13.5, fontWeight: 600, fontFamily: 'Sora, sans-serif', cursor: 'pointer' };
+const btnSelTodas: React.CSSProperties = { background: '#fff', color: '#0d9488', borderWidth: 1.5, borderStyle: 'solid', borderColor: '#99f6e4', borderRadius: 10, padding: '9px 14px', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' };
 const btnMapaOS: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, background: '#fff', color: '#0d9488', borderWidth: 1.5, borderStyle: 'solid', borderColor: '#99f6e4', borderRadius: 9, padding: '6px 12px', fontSize: 12.5, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' };
 const overlayMapa: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(10,31,30,.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 300, overflowY: 'auto', padding: '0 0 40px' };
 const barraMapa: React.CSSProperties = { position: 'sticky', top: 0, width: '100%', maxWidth: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', zIndex: 10 };

@@ -1,14 +1,17 @@
 import {
   Controller,
   Get,
+  Post,
   Param,
   Query,
+  Body,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { MapaTrabalhoService } from './mapa-trabalho.service';
+import { GerarMapaLoteDto } from './dto/gerar-mapa-lote.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -37,6 +40,22 @@ export class MapaTrabalhoController {
     @Res() res: Response,
   ) {
     const caminho = await this.mapaService.gerarMapaPorOrdem(ordemId, laboratorioId);
+    return res.download(caminho);
+  }
+
+  /**
+   * POST /mapa-trabalho/lote
+   * Gera e baixa UM PDF com o mapa de várias OS selecionadas.
+   * Recebe { ordemIds: string[] } no corpo.
+   */
+  @Post('lote')
+  @Roles(UserRole.ADMIN, UserRole.BIOMEDICO, UserRole.TECNICO)
+  async lote(
+    @Body() dto: GerarMapaLoteDto,
+    @CurrentUser('laboratorioId') laboratorioId: string,
+    @Res() res: Response,
+  ) {
+    const caminho = await this.mapaService.gerarMapaLote(dto.ordemIds, laboratorioId);
     return res.download(caminho);
   }
 
