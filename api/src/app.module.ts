@@ -1,3 +1,4 @@
+import { RelatoriosModule } from './modules/relatorios/relatorios.module';
 import { ComprovanteModule } from './modules/ordens/comprovante.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -59,6 +60,7 @@ import { PortalModule } from './modules/portal/portal.module';
     ResultadosModule,
     LaudosModule,
     ComprovanteModule,
+    RelatoriosModule,
 
     // Portal público do paciente
     PortalModule,

@@ -289,3 +289,23 @@ export const portalApi = {
     window.open(`/api/publico/laudos/${hash}/pdf`, '_blank');
   },
 };
+
+// ─── API de Relatórios ──────────────────────────────────────────
+function qsPeriodo(inicio?: string, fim?: string) {
+  const p = new URLSearchParams();
+  if (inicio) p.set('inicio', inicio);
+  if (fim) p.set('fim', fim);
+  const s = p.toString();
+  return s ? `?${s}` : '';
+}
+
+export const relatoriosApi = {
+  resumo: (inicio?: string, fim?: string) => apiRequest(`/relatorios/resumo${qsPeriodo(inicio, fim)}`),
+  producao: (inicio?: string, fim?: string) => apiRequest(`/relatorios/producao${qsPeriodo(inicio, fim)}`),
+  examesMaisSolicitados: (inicio?: string, fim?: string) => apiRequest(`/relatorios/exames-mais-solicitados${qsPeriodo(inicio, fim)}`),
+  produtividade: (inicio?: string, fim?: string) => apiRequest(`/relatorios/produtividade${qsPeriodo(inicio, fim)}`),
+  detalhado: (inicio?: string, fim?: string) => apiRequest(`/relatorios/detalhado${qsPeriodo(inicio, fim)}`),
+  // Exportações em PDF (abrem em nova aba com token)
+  pdfGeral: (inicio?: string, fim?: string) => baixarPdfComToken(`/api/relatorios/pdf${qsPeriodo(inicio, fim)}`, 'relatorio-geral.pdf'),
+  pdfTipo: (tipo: string, inicio?: string, fim?: string) => baixarPdfComToken(`/api/relatorios/pdf/${tipo}${qsPeriodo(inicio, fim)}`, `relatorio-${tipo}.pdf`),
+};
